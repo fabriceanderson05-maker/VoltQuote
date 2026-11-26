@@ -645,44 +645,42 @@
             </label>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">Nom / Raison sociale</label>
-              <input type="text" id="set-name" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm font-semibold" />
+          <!-- Company Logo Upload & Shape Selector -->
+          <div class="bg-[#050B14]/60 border border-white/10 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div id="settings-logo-preview" class="w-16 h-16 bg-black border border-white/15 flex items-center justify-center overflow-hidden shrink-0">
+                <!-- Logo preview injected dynamically -->
+              </div>
+              <div class="space-y-1">
+                <div class="font-bold text-sm text-white">Logo sur les devis & factures</div>
+                <p class="text-xs text-slate-400">Importez votre logo (PNG, JPG, SVG). Affichage haute netteté en haut à gauche du document A4.</p>
+                <div class="flex flex-wrap items-center gap-2 pt-1">
+                  <label class="cursor-pointer bg-[#CCFF00] hover:bg-[#d8ff33] text-[#050B14] font-bold text-xs px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all">
+                    <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                    <span>Importer un logo</span>
+                    <input type="file" id="set-logo-input" accept="image/png,image/jpeg,image/svg+xml,image/webp" onchange="handleLogoUpload(event)" class="hidden" />
+                  </label>
+                  <button type="button" onclick="resetDefaultDexformaLogo()" class="bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-white/10 transition-all">
+                    Logo Dexforma
+                  </button>
+                  <button type="button" onclick="removeCompanyLogo()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-rose-500/20 transition-all">
+                    Supprimer
+                  </button>
+                </div>
+              </div>
             </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">Statut juridique & Capital</label>
-              <input type="text" id="set-legalForm" placeholder="Ex: SAS au capital de 10 000 € ou Entrepreneur Individuel" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm" />
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">Numéro SIRET</label>
-              <input type="text" id="set-siret" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
-            </div>
-            <div id="set-vatNumber-group">
-              <label class="block text-xs font-medium text-slate-400 mb-1">N° TVA Intracommunautaire</label>
-              <input type="text" id="set-vatNumber" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">RCS / RM & Ville</label>
-              <input type="text" id="set-rcs" placeholder="Ex: RCS Paris B 912 345 678" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm" />
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">Code APE / NAF</label>
-              <input type="text" id="set-ape" placeholder="Ex: 6201Z" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">Email professionnel</label>
-              <input type="email" id="set-email" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm" />
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">Téléphone</label>
-              <input type="text" id="set-phone" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
-            </div>
-          </div>
 
-          <div>
-            <label class="block text-xs font-medium text-slate-400 mb-1">Adresse complète du siège</label>
-            <input type="text" id="set-address" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            <div class="w-full sm:w-auto shrink-0">
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">Forme des coins du logo</label>
+              <div class="inline-flex rounded-xl bg-[#050B14] p-1 border border-white/10 w-full sm:w-auto">
+                <button type="button" id="btn-shape-square" onclick="setLogoShape('square')" class="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                  Coins carrés
+                </button>
+                <button type="button" id="btn-shape-rounded" onclick="setLogoShape('rounded')" class="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                  Coins arrondis
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -810,7 +808,35 @@
 
   <!-- ==================== JAVASCRIPT APPLICATION LOGIC ==================== -->
   <script>
-    const STORAGE_KEY = 'voltquote_saas_state_v1';
+    const STORAGE_KEY = 'voltquote_saas_state_v2';
+
+    // --- DEFAULT DEXFORMA LOGO (HIGH-CRISP SVG DATA URI) ---
+    const DEXFORMA_DEFAULT_LOGO = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+        <rect width="400" height="400" fill="#000000"/>
+        <g fill="none" stroke="#18B6D9" stroke-width="1.35" opacity="0.72">
+          <path d="M-20,210 C55,155 125,250 205,275 C285,300 345,215 420,175"/>
+          <path d="M-20,217 C55,163 125,258 205,282 C285,306 345,222 420,183"/>
+          <path d="M-20,224 C55,171 125,266 205,289 C285,312 345,229 420,191"/>
+          <path d="M-20,231 C55,179 125,274 205,296 C285,318 345,236 420,199"/>
+          <path d="M-20,238 C55,187 125,282 205,303 C285,324 345,243 420,207"/>
+          <path d="M-20,245 C55,195 125,290 205,310 C285,330 345,250 420,215"/>
+          <path d="M-20,252 C55,203 125,298 205,317 C285,336 345,257 420,223"/>
+          <path d="M-20,259 C55,211 125,306 205,324 C285,342 345,264 420,231"/>
+          <path d="M-20,266 C55,219 125,314 205,331 C285,348 345,271 420,239"/>
+          <path d="M-20,273 C55,227 125,322 205,338 C285,354 345,278 420,247"/>
+          <path d="M-20,280 C55,235 125,330 205,345 C285,360 345,285 420,255"/>
+        </g>
+        <g fill="#18B6D9">
+          <!-- D -->
+          <path d="M46,136 H94 C128,136 146,156 146,186 C146,216 128,236 94,236 H46 V195 H74 V212 H91 C107,212 116,202 116,186 C116,170 107,160 91,160 H74 V183 H46 Z"/>
+          <!-- E -->
+          <path d="M161,136 H239 V160 H190 V174 H228 V197 H190 V212 H241 V236 H161 Z"/>
+          <!-- X -->
+          <polygon points="252,136 285,136 304,167 323,136 355,136 321,185 357,236 324,236 303,204 282,236 250,236 286,185"/>
+        </g>
+      </svg>
+    `);
 
     // --- DEFAULT DEMO DATASET ---
     function getDefaultState() {
@@ -823,35 +849,39 @@
           {
             id: 'prof_sas',
             badge: 'Société / PME (TVA Multi-taux)',
-            name: 'Studio Horizon SAS',
+            name: 'Dexforma',
             legalForm: 'SAS au capital de 15 000 €',
             siret: '912 845 320 00018',
             vatNumber: 'FR 48 912845320',
             rcs: 'RCS Paris B 912 845 320',
             ape: '6201Z',
-            email: 'contact@studio-horizon.fr',
+            email: 'contact@dexforma.fr',
             phone: '01 86 95 42 10',
             address: '42 Rue du Faubourg Saint-Martin, 75010 Paris',
             iban: 'FR76 3000 4028 3700 0108 9452 163',
             bic: 'BNPAFRPPXXX',
             vatExempt: false,
+            logo: DEXFORMA_DEFAULT_LOGO,
+            logoShape: 'square',
             legalFooter: 'En cas de retard de paiement, application d\'une pénalité égale à 3 fois le taux d\'intérêt légal ainsi qu\'une indemnité forfaitaire de 40 € pour frais de recouvrement (Art. L441-10 du Code de commerce).'
           },
           {
             id: 'prof_ae',
             badge: 'Auto-Entrepreneur (Art. 293 B)',
-            name: 'Alex Martin — Conseil & Design',
+            name: 'Dexforma — Conseil & Formation',
             legalForm: 'Entrepreneur Individuel (Micro-entreprise)',
             siret: '884 219 765 00024',
             vatNumber: '',
             rcs: 'Dispensé d\'immatriculation RCS/RM',
             ape: '7410Z',
-            email: 'alex@martin-studio.fr',
+            email: 'contact@dexforma.fr',
             phone: '06 42 18 90 34',
             address: '14 Avenue Jean Jaurès, 69007 Lyon',
             iban: 'FR76 1027 8073 1900 0214 8901 245',
             bic: 'CMCIFR2AXXX',
             vatExempt: true,
+            logo: DEXFORMA_DEFAULT_LOGO,
+            logoShape: 'square',
             legalFooter: 'TVA non applicable, art. 293 B du CGI. Dispensé d\'immatriculation au registre du commerce et des sociétés (RCS) et au répertoire des métiers (RM).'
           }
         ],
@@ -1833,15 +1863,18 @@
         .join('')
         .toUpperCase();
 
+      const logoRadiusStyle = profile.logoShape === 'rounded' ? 'border-radius: 12px;' : 'border-radius: 0px;';
+      const logoBlockHtml = profile.logo
+        ? `<img src="${profile.logo}" alt="${escapeAttr(profile.name)}" style="width: 64px; height: 64px; object-fit: cover; ${logoRadiusStyle}" class="shrink-0 bg-black" />`
+        : `<div style="width: 64px; height: 64px; ${logoRadiusStyle}" class="bg-slate-900 text-[#CCFF00] font-extrabold text-lg flex items-center justify-center shrink-0 tracking-tight">${initials || 'DX'}</div>`;
+
       const html = `
         <!-- TOP SECTION: HEADER & PARTIES -->
         <div>
           <!-- Header Row -->
           <div class="flex justify-between items-start border-b-2 border-slate-900 pb-6">
-            <div class="flex items-start gap-3.5">
-              <div class="w-12 h-12 rounded-xl bg-slate-900 text-[#CCFF00] font-extrabold text-lg flex items-center justify-center shrink-0 tracking-tight">
-                ${initials || 'VQ'}
-              </div>
+            <div class="flex items-start gap-4">
+              ${logoBlockHtml}
               <div>
                 <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">${escapeHtml(profile.name)}</h1>
                 <p class="text-xs font-medium text-slate-600">${escapeHtml(profile.legalForm)}</p>
@@ -2314,7 +2347,74 @@
       document.getElementById('set-bic').value = active.bic || '';
       document.getElementById('set-legalFooter').value = active.legalFooter || '';
 
+      renderSettingsLogoPreview(active);
       lucide.createIcons();
+    }
+
+    function renderSettingsLogoPreview(profile) {
+      const previewEl = document.getElementById('settings-logo-preview');
+      const btnSquare = document.getElementById('btn-shape-square');
+      const btnRounded = document.getElementById('btn-shape-rounded');
+      const isRounded = profile.logoShape === 'rounded';
+
+      if (previewEl) {
+        previewEl.style.borderRadius = isRounded ? '12px' : '0px';
+        if (profile.logo) {
+          previewEl.innerHTML = `<img src="${profile.logo}" alt="Logo" class="w-full h-full object-cover" />`;
+        } else {
+          const initials = (profile.name || 'DX').slice(0, 2).toUpperCase();
+          previewEl.innerHTML = `<span class="font-extrabold text-lg text-[#CCFF00]">${escapeHtml(initials)}</span>`;
+        }
+      }
+
+      if (btnSquare && btnRounded) {
+        btnSquare.className = !isRounded
+          ? 'flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold bg-[#CCFF00] text-[#050B14] transition-all'
+          : 'flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all';
+        btnRounded.className = isRounded
+          ? 'flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold bg-[#CCFF00] text-[#050B14] transition-all'
+          : 'flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all';
+      }
+    }
+
+    function handleLogoUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const active = getActiveProfile();
+        active.logo = e.target.result;
+        if (!active.logoShape) active.logoShape = 'square';
+        persistState();
+        renderSettingsLogoPreview(active);
+        showToast('Logo importé avec succès', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function setLogoShape(shape) {
+      const active = getActiveProfile();
+      active.logoShape = shape;
+      persistState();
+      renderSettingsLogoPreview(active);
+      showToast(shape === 'square' ? 'Coins carrés appliqués au logo' : 'Coins arrondis appliqués au logo', 'success');
+    }
+
+    function resetDefaultDexformaLogo() {
+      const active = getActiveProfile();
+      active.logo = DEXFORMA_DEFAULT_LOGO;
+      active.logoShape = 'square';
+      persistState();
+      renderSettingsLogoPreview(active);
+      showToast('Logo Dexforma (coins carrés) restauré', 'success');
+    }
+
+    function removeCompanyLogo() {
+      const active = getActiveProfile();
+      active.logo = '';
+      persistState();
+      renderSettingsLogoPreview(active);
+      showToast('Logo supprimé (initiales affichées par défaut)', 'info');
     }
 
     function toggleVatExemptSetting(isExempt) {
