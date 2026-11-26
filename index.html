@@ -1,0 +1,2382 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoltQuote — Création de Devis & Factures Pro</title>
+
+  <!-- Google Fonts : Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            void: '#050B14',
+            navy: '#0F1E36',
+            volt: '#CCFF00',
+            'volt-hover': '#d8ff33',
+            'volt-dim': 'rgba(204, 255, 0, 0.12)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg-start: #050B14;
+      --bg-end: #0F1E36;
+      --glass-bg: rgba(15, 30, 54, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --accent: #CCFF00;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: linear-gradient(135deg, #050B14 0%, #091426 50%, #0F1E36 100%);
+      background-attachment: fixed;
+      color: #F8FAFC;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .font-mono-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Glassmorphism Panels */
+    .glass-panel {
+      background: rgba(15, 30, 54, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-card-hover {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-card-hover:hover {
+      border-color: rgba(204, 255, 0, 0.3);
+      background: rgba(19, 38, 68, 0.82);
+      transform: translateY(-1px);
+    }
+
+    /* Inputs & Focus States */
+    .volt-input {
+      background: rgba(5, 11, 20, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #F8FAFC;
+      transition: all 0.18s ease;
+    }
+    .volt-input:focus {
+      outline: none;
+      border-color: #CCFF00;
+      box-shadow: 0 0 0 3px rgba(204, 255, 0, 0.15);
+      background: rgba(5, 11, 20, 0.9);
+    }
+    .volt-input::placeholder {
+      color: #64748B;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(5, 11, 20, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(204, 255, 0, 0.4);
+    }
+
+    /* A4 Sheet Styling */
+    .a4-sheet {
+      width: 210mm;
+      min-height: 297mm;
+      background: #FFFFFF;
+      color: #0F172A;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75);
+      transform-origin: top center;
+      transition: transform 0.2s ease;
+    }
+
+    /* Print Media Query for crisp PDF Export */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+      body {
+        background: #FFFFFF !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      #print-area {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #FFFFFF !important;
+      }
+      .a4-sheet {
+        width: 210mm !important;
+        min-height: 297mm !important;
+        box-shadow: none !important;
+        transform: none !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-[#CCFF00] selection:text-[#050B14]">
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="no-print fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- MAIN APP SHELL -->
+  <div id="app-shell" class="no-print min-h-screen flex flex-col">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="sticky top-0 z-30 glass-panel border-b border-white/10 px-4 lg:px-8 py-3">
+      <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+        
+        <!-- Brand Logo -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="navigateTo('dashboard')">
+          <div class="w-9 h-9 rounded-xl bg-[#CCFF00] flex items-center justify-center shadow-[0_0_20px_rgba(204,255,0,0.35)]">
+            <i data-lucide="zap" class="w-5 h-5 text-[#050B14] fill-[#050B14]"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-extrabold text-lg tracking-tight text-white">Volt<span class="text-[#CCFF00]">Quote</span></span>
+              <span class="text-[10px] font-mono-num uppercase px-1.5 py-0.5 rounded bg-white/10 text-slate-300 border border-white/10">PRO</span>
+            </div>
+            <p class="text-[11px] text-slate-400 hidden sm:block">Devis & Facturation Haute Vélocité</p>
+          </div>
+        </div>
+
+        <!-- Primary SPA Navigation -->
+        <nav class="flex items-center gap-1 bg-[#050B14]/60 p-1 rounded-xl border border-white/10 overflow-x-auto max-w-full">
+          <button onclick="navigateTo('dashboard')" data-nav="dashboard" class="nav-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Tableau de bord</span>
+          </button>
+          <button onclick="navigateTo('editor')" data-nav="editor" class="nav-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap">
+            <i data-lucide="file-pen-line" class="w-4 h-4"></i>
+            <span>Éditeur</span>
+          </button>
+          <button onclick="navigateTo('catalog')" data-nav="catalog" class="nav-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap">
+            <i data-lucide="package" class="w-4 h-4"></i>
+            <span>Catalogue</span>
+          </button>
+          <button onclick="navigateTo('clients')" data-nav="clients" class="nav-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap">
+            <i data-lucide="users" class="w-4 h-4"></i>
+            <span>Clients</span>
+          </button>
+          <button onclick="navigateTo('settings')" data-nav="settings" class="nav-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap">
+            <i data-lucide="building-2" class="w-4 h-4"></i>
+            <span class="hidden md:inline">Entreprise</span>
+          </button>
+        </nav>
+
+        <!-- Right Controls: Profile Switcher + Primary CTA -->
+        <div class="flex items-center gap-2.5">
+          <!-- Company Status Quick Switcher -->
+          <div class="relative flex items-center bg-[#050B14]/80 border border-white/10 rounded-xl px-2.5 py-1.5">
+            <i data-lucide="briefcase" class="w-3.5 h-3.5 text-[#CCFF00] mr-2 shrink-0"></i>
+            <select id="header-profile-select" onchange="switchCompanyProfile(this.value)" class="bg-transparent text-xs font-semibold text-white focus:outline-none cursor-pointer pr-2 max-w-[165px] truncate">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <button onclick="createNewQuote()" class="flex items-center gap-2 bg-[#CCFF00] hover:bg-[#d8ff33] text-[#050B14] font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-[0_0_20px_rgba(204,255,0,0.25)] transition-all active:scale-95 cursor-pointer">
+            <i data-lucide="plus" class="w-4 h-4 stroke-[2.5]"></i>
+            <span>Nouveau Devis</span>
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- ACTIVE FISCAL MODE BANNER -->
+    <div id="fiscal-banner" class="bg-[#050B14]/50 border-b border-white/5 px-4 lg:px-8 py-1.5 text-xs">
+      <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-2 text-slate-400">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-[#CCFF00] animate-pulse"></span>
+          <span id="banner-company-info">Profil actif : <strong class="text-white">Studio Horizon SAS</strong> — Régime Réel (TVA Multi-taux activée)</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <button onclick="navigateTo('settings')" class="text-[#CCFF00] hover:underline font-medium flex items-center gap-1">
+            <i data-lucide="sliders-horizontal" class="w-3 h-3"></i> Configurer le régime fiscal
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-8 py-6">
+
+      <!-- ==================== VIEW 1: DASHBOARD ==================== -->
+      <section id="view-dashboard" class="space-y-6">
+        
+        <!-- Welcome & Quick Actions Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Tableau de bord</h1>
+            <p class="text-sm text-slate-400 mt-0.5">Pilotez votre activité commerciale et transformez vos devis en un clic.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="resetDemoData()" class="px-3 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>Réinitialiser démo</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI CARDS GRID -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="dashboard-kpis">
+          <!-- Populated via JS -->
+        </div>
+
+        <!-- QUOTES LIST PANEL -->
+        <div class="glass-panel rounded-2xl p-5 sm:p-6 space-y-5">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-[#CCFF00]/15 border border-[#CCFF00]/30 flex items-center justify-center text-[#CCFF00]">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-white">Devis & Factures récents</h2>
+                <p class="text-xs text-slate-400">Cliquez sur un document pour l'éditer ou générer son PDF</p>
+              </div>
+            </div>
+
+            <!-- Search & Status Filters -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <input type="text" id="quote-search-input" oninput="renderDashboard()" placeholder="Rechercher n°, client, objet..." class="volt-input rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm w-full sm:w-64" />
+              </div>
+
+              <div class="flex items-center gap-1 bg-[#050B14]/70 p-1 rounded-xl border border-white/10 overflow-x-auto" id="status-filter-pills">
+                <!-- Filter buttons populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Responsive Table -->
+          <div class="overflow-x-auto rounded-xl border border-white/10">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-[#050B14]/80 border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+                  <th class="py-3.5 px-4">Numéro</th>
+                  <th class="py-3.5 px-4">Client & Objet</th>
+                  <th class="py-3.5 px-4">Émission</th>
+                  <th class="py-3.5 px-4 text-right">Montant HT</th>
+                  <th class="py-3.5 px-4 text-right">Net / TTC</th>
+                  <th class="py-3.5 px-4">Statut</th>
+                  <th class="py-3.5 px-4 text-right">Actions rapides</th>
+                </tr>
+              </thead>
+              <tbody id="quotes-table-body" class="divide-y divide-white/5 text-sm">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 2: SPLIT-SCREEN QUOTE EDITOR ==================== -->
+      <section id="view-editor" class="hidden space-y-4">
+        
+        <!-- Editor Top Action Bar -->
+        <div class="glass-panel rounded-2xl p-3.5 sm:px-5 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <button onclick="navigateTo('dashboard')" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-all" title="Retour au tableau de bord">
+              <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            </button>
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="editor-doc-badge" class="text-xs font-mono-num font-bold px-2 py-0.5 rounded bg-[#CCFF00]/15 text-[#CCFF00] border border-[#CCFF00]/30">DEVIS</span>
+                <h2 id="editor-title-number" class="font-mono-num font-bold text-base sm:text-lg text-white">DEV-2026-004</h2>
+              </div>
+              <div class="flex items-center gap-2 text-[11px] text-slate-400">
+                <span id="autosave-indicator" class="flex items-center gap-1 text-emerald-400">
+                  <i data-lucide="check-circle-2" class="w-3 h-3"></i> Sauvegardé automatiquement
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile Tab Switcher (Edit vs Preview) -->
+          <div class="flex lg:hidden bg-[#050B14] p-1 rounded-xl border border-white/10">
+            <button onclick="setMobileEditorTab('form')" id="mob-tab-form" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#CCFF00] text-[#050B14]">Édition</button>
+            <button onclick="setMobileEditorTab('preview')" id="mob-tab-preview" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300">Aperçu A4</button>
+          </div>
+
+          <!-- Editor Primary Actions -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="duplicateCurrentQuote()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 flex items-center gap-1.5 transition-all">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">Dupliquer</span>
+            </button>
+
+            <button id="btn-convert-invoice" onclick="convertCurrentToInvoice()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 flex items-center gap-1.5 transition-all">
+              <i data-lucide="file-check-2" class="w-3.5 h-3.5"></i>
+              <span>Convertir en Facture</span>
+            </button>
+
+            <button onclick="saveCurrentQuote(true)" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-white border border-white/15 flex items-center gap-1.5 transition-all">
+              <i data-lucide="save" class="w-3.5 h-3.5 text-[#CCFF00]"></i>
+              <span>Enregistrer</span>
+            </button>
+
+            <button onclick="exportToPDF()" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-[#CCFF00] hover:bg-[#d8ff33] text-[#050B14] shadow-[0_0_20px_rgba(204,255,0,0.3)] flex items-center gap-1.5 transition-all active:scale-95">
+              <i data-lucide="printer" class="w-4 h-4 stroke-[2.5]"></i>
+              <span>Générer PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SPLIT-SCREEN WORKSPACE -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- LEFT PANE: ERGONOMIC FORM (6 cols on lg, 5 cols on xl) -->
+          <div id="editor-form-pane" class="lg:col-span-6 xl:col-span-5 space-y-5">
+            
+            <!-- Card 1: Document Metadata -->
+            <div class="glass-panel rounded-2xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                  <i data-lucide="file-sliders" class="w-4 h-4 text-[#CCFF00]"></i> Informations du document
+                </h3>
+                <select id="ed-status" onchange="updateQuoteField('status', this.value)" class="volt-input rounded-lg px-2.5 py-1 text-xs font-bold">
+                  <option value="Brouillon">Brouillon</option>
+                  <option value="Envoyé">Envoyé</option>
+                  <option value="Accepté">Accepté</option>
+                  <option value="Refusé">Refusé</option>
+                  <option value="Facturé">Facturé</option>
+                </select>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Type de document</label>
+                  <select id="ed-type" onchange="updateQuoteField('type', this.value)" class="volt-input w-full rounded-xl px-3 py-2 text-sm font-semibold">
+                    <option value="Devis">Devis</option>
+                    <option value="Facture">Facture</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Numéro</label>
+                  <input type="text" id="ed-number" oninput="updateQuoteField('number', this.value)" class="volt-input font-mono-num w-full rounded-xl px-3 py-2 text-sm font-semibold" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Date d'émission</label>
+                  <input type="date" id="ed-date" onchange="updateQuoteField('date', this.value)" class="volt-input font-mono-num w-full rounded-xl px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label id="ed-valid-label" class="block text-xs font-medium text-slate-400 mb-1">Validité jusqu'au</label>
+                  <input type="date" id="ed-validUntil" onchange="updateQuoteField('validUntil', this.value)" class="volt-input font-mono-num w-full rounded-xl px-3 py-2 text-sm" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Objet / Intitulé du projet</label>
+                <input type="text" id="ed-subject" oninput="updateQuoteField('subject', this.value)" placeholder="Ex: Refonte plateforme SaaS & Design System" class="volt-input w-full rounded-xl px-3 py-2 text-sm" />
+              </div>
+            </div>
+
+            <!-- Card 2: Client Selection & Quick Create -->
+            <div class="glass-panel rounded-2xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                  <i data-lucide="user-check" class="w-4 h-4 text-[#CCFF00]"></i> Client destinataire
+                </h3>
+                <button onclick="toggleQuickClientForm()" class="text-xs font-bold text-[#CCFF00] hover:underline flex items-center gap-1">
+                  <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> + Nouveau client
+                </button>
+              </div>
+
+              <div>
+                <select id="ed-client-select" onchange="selectQuoteClient(this.value)" class="volt-input w-full rounded-xl px-3 py-2.5 text-sm font-medium">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <!-- Quick Inline Client Creation Form -->
+              <div id="quick-client-box" class="hidden bg-[#050B14]/80 border border-[#CCFF00]/30 rounded-xl p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-[#CCFF00]">Création rapide d'un client</span>
+                  <button onclick="toggleQuickClientForm()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <input type="text" id="qc-name" placeholder="Raison sociale / Nom *" class="volt-input rounded-lg px-3 py-2 text-xs" />
+                  <input type="text" id="qc-contact" placeholder="Contact (ex: Marie Dupont)" class="volt-input rounded-lg px-3 py-2 text-xs" />
+                  <input type="text" id="qc-siret" placeholder="N° SIRET (14 chiffres)" class="volt-input font-mono-num rounded-lg px-3 py-2 text-xs" />
+                  <input type="email" id="qc-email" placeholder="Email professionnel" class="volt-input rounded-lg px-3 py-2 text-xs" />
+                </div>
+                <input type="text" id="qc-address" placeholder="Adresse complète (Rue, CP, Ville)" class="volt-input w-full rounded-lg px-3 py-2 text-xs" />
+                <div class="flex justify-end">
+                  <button onclick="saveQuickClient()" class="bg-[#CCFF00] text-[#050B14] font-bold text-xs px-3.5 py-2 rounded-lg hover:bg-[#d8ff33]">
+                    Ajouter & Sélectionner
+                  </button>
+                </div>
+              </div>
+
+              <!-- Selected Client Mini Card -->
+              <div id="selected-client-summary" class="bg-white/5 rounded-xl p-3 text-xs text-slate-300 space-y-1 border border-white/5">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Card 3: Line Items & 1-Click Catalog Autocomplete -->
+            <div class="glass-panel rounded-2xl p-5 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                  <i data-lucide="list-ordered" class="w-4 h-4 text-[#CCFF00]"></i> Prestations & Produits
+                </h3>
+                <span id="vat-mode-pill" class="text-[11px] font-mono-num px-2 py-0.5 rounded bg-white/10 text-slate-300">
+                  TVA Multi-taux
+                </span>
+              </div>
+
+              <!-- 1-Click Catalog Quick Insert Bar -->
+              <div class="bg-[#050B14]/70 p-3 rounded-xl border border-white/10 space-y-2">
+                <label class="text-[11px] font-semibold text-[#CCFF00] flex items-center gap-1.5">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Ajout rapide depuis le catalogue (1 clic) :
+                </label>
+                <div class="flex gap-2">
+                  <select id="catalog-quick-select" class="volt-input flex-1 rounded-lg px-3 py-2 text-xs">
+                    <!-- Populated dynamically -->
+                  </select>
+                  <button onclick="addCatalogItemToQuote()" class="bg-[#CCFF00] hover:bg-[#d8ff33] text-[#050B14] font-bold text-xs px-3 py-2 rounded-lg shrink-0 flex items-center gap-1">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Insérer
+                  </button>
+                </div>
+              </div>
+
+              <!-- Dynamic Line Items Container -->
+              <div id="quote-lines-container" class="space-y-3">
+                <!-- Lines rendered via JS -->
+              </div>
+
+              <button onclick="addEmptyLine()" class="w-full py-2.5 rounded-xl border border-dashed border-white/20 hover:border-[#CCFF00] text-slate-300 hover:text-[#CCFF00] text-xs font-bold flex items-center justify-center gap-1.5 transition-all">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> Ajouter une ligne libre
+              </button>
+            </div>
+
+            <!-- Card 4: Discounts, Deposit & Legal Terms -->
+            <div class="glass-panel rounded-2xl p-5 space-y-4">
+              <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2 border-b border-white/10 pb-3">
+                <i data-lucide="calculator" class="w-4 h-4 text-[#CCFF00]"></i> Remises, Acompte & Conditions
+              </h3>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Remise globale</label>
+                  <div class="flex gap-1.5">
+                    <input type="number" min="0" step="0.01" id="ed-globalDiscount" oninput="updateQuoteField('globalDiscount', parseFloat(this.value) || 0)" class="volt-input font-mono-num w-full rounded-xl px-3 py-2 text-sm" />
+                    <select id="ed-globalDiscountType" onchange="updateQuoteField('globalDiscountType', this.value)" class="volt-input rounded-xl px-2.5 py-2 text-xs font-bold">
+                      <option value="percent">%</option>
+                      <option value="amount">€</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Acompte à la commande</label>
+                  <div class="flex gap-1.5">
+                    <input type="number" min="0" step="0.01" id="ed-depositValue" oninput="updateQuoteField('depositValue', parseFloat(this.value) || 0)" class="volt-input font-mono-num w-full rounded-xl px-3 py-2 text-sm" />
+                    <select id="ed-depositType" onchange="updateQuoteField('depositType', this.value)" class="volt-input rounded-xl px-2.5 py-2 text-xs font-bold">
+                      <option value="percent">%</option>
+                      <option value="amount">€</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Conditions de règlement</label>
+                <input type="text" id="ed-paymentTerms" oninput="updateQuoteField('paymentTerms', this.value)" class="volt-input w-full rounded-xl px-3 py-2 text-xs" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Notes & Informations complémentaires</label>
+                <textarea id="ed-notes" rows="2" oninput="updateQuoteField('notes', this.value)" class="volt-input w-full rounded-xl px-3 py-2 text-xs"></textarea>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT PANE: REAL-TIME A4 DOCUMENT PREVIEW (6 cols on lg, 7 cols on xl) -->
+          <div id="editor-preview-pane" class="hidden lg:flex lg:col-span-6 xl:col-span-7 flex-col items-center">
+            
+            <!-- Preview Toolbar -->
+            <div class="w-full glass-panel rounded-2xl px-4 py-2.5 mb-4 flex items-center justify-between">
+              <div class="flex items-center gap-2 text-xs text-slate-300">
+                <i data-lucide="eye" class="w-4 h-4 text-[#CCFF00]"></i>
+                <span class="font-semibold">Aperçu Temps Réel — Format A4 (210 × 297 mm)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="adjustPreviewZoom(-0.1)" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300" title="Zoom arrière">
+                  <i data-lucide="zoom-out" class="w-3.5 h-3.5"></i>
+                </button>
+                <span id="zoom-level-label" class="font-mono-num text-xs text-slate-300 w-12 text-center">80%</span>
+                <button onclick="adjustPreviewZoom(0.1)" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300" title="Zoom avant">
+                  <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Scrollable Canvas Wrapper for A4 Sheet -->
+            <div id="a4-wrapper" class="w-full overflow-x-auto pb-10 flex justify-center">
+              <div id="a4-document-render" class="a4-sheet p-10 sm:p-12 flex flex-col justify-between text-slate-900">
+                <!-- Real-time A4 HTML injected here -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 3: CATALOG ==================== -->
+      <section id="view-catalog" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-white">Catalogue Prestations & Produits</h1>
+            <p class="text-sm text-slate-400">Gérez vos prestations types pour les insérer en 1 clic dans vos devis.</p>
+          </div>
+          <button onclick="openCatalogModal()" class="bg-[#CCFF00] hover:bg-[#d8ff33] text-[#050B14] font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-[0_0_20px_rgba(204,255,0,0.2)] self-start">
+            <i data-lucide="plus" class="w-4 h-4"></i> Nouvelle Prestation
+          </button>
+        </div>
+
+        <div id="catalog-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 4: CLIENTS ==================== -->
+      <section id="view-clients" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-white">Base Clients</h1>
+            <p class="text-sm text-slate-400">Vos clients professionnels et particuliers prêts à être facturés.</p>
+          </div>
+          <button onclick="openClientModal()" class="bg-[#CCFF00] hover:bg-[#d8ff33] text-[#050B14] font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-[0_0_20px_rgba(204,255,0,0.2)] self-start">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> Nouveau Client
+          </button>
+        </div>
+
+        <div id="clients-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 5: COMPANY SETTINGS ==================== -->
+      <section id="view-settings" class="hidden space-y-6 max-w-4xl mx-auto">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-white">Paramètres Entreprise & Régime Fiscal</h1>
+          <p class="text-sm text-slate-400">Basculez entre vos profils (Auto-entrepreneur ou Société) et personnalisez vos mentions légales obligatoires.</p>
+        </div>
+
+        <!-- Profile Switcher Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="profile-cards-selector">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Active Profile Edit Form -->
+        <div class="glass-panel rounded-2xl p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-white/10 pb-4">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i data-lucide="building-2" class="w-5 h-5 text-[#CCFF00]"></i>
+              <span>Identité & Mentions légales du profil actif</span>
+            </h2>
+          </div>
+
+          <!-- Smart Fiscal Toggle -->
+          <div class="bg-[#050B14]/80 border border-[#CCFF00]/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-sm text-white">Franchise en base de TVA (Art. 293 B du CGI)</span>
+                <span class="text-[10px] font-mono-num uppercase px-2 py-0.5 rounded bg-[#CCFF00]/15 text-[#CCFF00]">Auto-entrepreneur</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Masque automatiquement les colonnes de TVA et affiche la mention obligatoire « TVA non applicable, art. 293 B du CGI ».</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input type="checkbox" id="set-vatExempt" onchange="toggleVatExemptSetting(this.checked)" class="sr-only peer">
+              <div class="w-12 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-[#050B14] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#CCFF00]"></div>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Nom / Raison sociale</label>
+              <input type="text" id="set-name" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm font-semibold" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Statut juridique & Capital</label>
+              <input type="text" id="set-legalForm" placeholder="Ex: SAS au capital de 10 000 € ou Entrepreneur Individuel" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Numéro SIRET</label>
+              <input type="text" id="set-siret" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            </div>
+            <div id="set-vatNumber-group">
+              <label class="block text-xs font-medium text-slate-400 mb-1">N° TVA Intracommunautaire</label>
+              <input type="text" id="set-vatNumber" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">RCS / RM & Ville</label>
+              <input type="text" id="set-rcs" placeholder="Ex: RCS Paris B 912 345 678" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Code APE / NAF</label>
+              <input type="text" id="set-ape" placeholder="Ex: 6201Z" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Email professionnel</label>
+              <input type="email" id="set-email" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Téléphone</label>
+              <input type="text" id="set-phone" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Adresse complète du siège</label>
+            <input type="text" id="set-address" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-sm" />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">IBAN (pour règlement virement)</label>
+              <input type="text" id="set-iban" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">BIC / SWIFT</label>
+              <input type="text" id="set-bic" class="volt-input font-mono-num w-full rounded-xl px-3.5 py-2.5 text-sm" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Mentions légales de pied de page</label>
+            <textarea id="set-legalFooter" rows="2" class="volt-input w-full rounded-xl px-3.5 py-2.5 text-xs"></textarea>
+          </div>
+
+          <div class="flex justify-end pt-2">
+            <button onclick="saveCompanySettings()" class="bg-[#CCFF00] hover:bg-[#d8ff33] text-[#050B14] font-bold text-sm px-6 py-2.5 rounded-xl shadow-[0_0_20px_rgba(204,255,0,0.25)] flex items-center gap-2">
+              <i data-lucide="check" class="w-4 h-4 stroke-[2.5]"></i> Enregistrer le profil entreprise
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- HIDDEN DEDICATED PRINT CONTAINER -->
+  <div id="print-area" class="hidden"></div>
+
+  <!-- MODAL: CATALOG ITEM -->
+  <div id="catalog-modal" class="no-print hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-panel rounded-2xl max-w-lg w-full p-6 space-y-4 border border-white/15">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <h3 id="cat-modal-title" class="text-lg font-bold text-white">Nouvelle prestation</h3>
+        <button onclick="closeCatalogModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <input type="hidden" id="cat-edit-id" />
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Désignation *</label>
+          <input type="text" id="cat-title" placeholder="Ex: Développement Application Web" class="volt-input w-full rounded-xl px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Description détaillée</label>
+          <textarea id="cat-desc" rows="2" placeholder="Détails inclus dans la prestation..." class="volt-input w-full rounded-xl px-3 py-2 text-xs"></textarea>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Unité</label>
+            <select id="cat-unit" class="volt-input w-full rounded-xl px-2.5 py-2 text-sm">
+              <option value="jour">jour</option>
+              <option value="heure">heure</option>
+              <option value="forfait">forfait</option>
+              <option value="pièce">pièce</option>
+              <option value="mois">mois</option>
+              <option value="m²">m²</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Prix Unitaire HT (€)</label>
+            <input type="number" step="0.01" id="cat-price" placeholder="650" class="volt-input font-mono-num w-full rounded-xl px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">TVA (%)</label>
+            <select id="cat-vat" class="volt-input font-mono-num w-full rounded-xl px-2.5 py-2 text-sm">
+              <option value="20">20%</option>
+              <option value="10">10%</option>
+              <option value="5.5">5.5%</option>
+              <option value="2.1">2.1%</option>
+              <option value="0">0%</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeCatalogModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-white/5 hover:bg-white/10">Annuler</button>
+        <button onclick="saveCatalogItem()" class="px-4 py-2 rounded-xl text-xs font-bold bg-[#CCFF00] text-[#050B14] hover:bg-[#d8ff33]">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CLIENT -->
+  <div id="client-modal" class="no-print hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-panel rounded-2xl max-w-lg w-full p-6 space-y-4 border border-white/15">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <h3 id="cli-modal-title" class="text-lg font-bold text-white">Nouveau client</h3>
+        <button onclick="closeClientModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <input type="hidden" id="cli-edit-id" />
+      <div class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Raison sociale / Nom *</label>
+            <input type="text" id="cli-name" class="volt-input w-full rounded-xl px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Interlocuteur principal</label>
+            <input type="text" id="cli-contact" class="volt-input w-full rounded-xl px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">SIRET</label>
+            <input type="text" id="cli-siret" class="volt-input font-mono-num w-full rounded-xl px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Email</label>
+            <input type="email" id="cli-email" class="volt-input w-full rounded-xl px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Adresse complète</label>
+          <input type="text" id="cli-address" class="volt-input w-full rounded-xl px-3 py-2 text-sm" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeClientModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-white/5 hover:bg-white/10">Annuler</button>
+        <button onclick="saveClientModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-[#CCFF00] text-[#050B14] hover:bg-[#d8ff33]">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT APPLICATION LOGIC ==================== -->
+  <script>
+    const STORAGE_KEY = 'voltquote_saas_state_v1';
+
+    // --- DEFAULT DEMO DATASET ---
+    function getDefaultState() {
+      return {
+        activeView: 'dashboard',
+        statusFilter: 'Tous',
+        previewZoom: 0.78,
+        activeProfileId: 'prof_sas',
+        profiles: [
+          {
+            id: 'prof_sas',
+            badge: 'Société / PME (TVA Multi-taux)',
+            name: 'Studio Horizon SAS',
+            legalForm: 'SAS au capital de 15 000 €',
+            siret: '912 845 320 00018',
+            vatNumber: 'FR 48 912845320',
+            rcs: 'RCS Paris B 912 845 320',
+            ape: '6201Z',
+            email: 'contact@studio-horizon.fr',
+            phone: '01 86 95 42 10',
+            address: '42 Rue du Faubourg Saint-Martin, 75010 Paris',
+            iban: 'FR76 3000 4028 3700 0108 9452 163',
+            bic: 'BNPAFRPPXXX',
+            vatExempt: false,
+            legalFooter: 'En cas de retard de paiement, application d\'une pénalité égale à 3 fois le taux d\'intérêt légal ainsi qu\'une indemnité forfaitaire de 40 € pour frais de recouvrement (Art. L441-10 du Code de commerce).'
+          },
+          {
+            id: 'prof_ae',
+            badge: 'Auto-Entrepreneur (Art. 293 B)',
+            name: 'Alex Martin — Conseil & Design',
+            legalForm: 'Entrepreneur Individuel (Micro-entreprise)',
+            siret: '884 219 765 00024',
+            vatNumber: '',
+            rcs: 'Dispensé d\'immatriculation RCS/RM',
+            ape: '7410Z',
+            email: 'alex@martin-studio.fr',
+            phone: '06 42 18 90 34',
+            address: '14 Avenue Jean Jaurès, 69007 Lyon',
+            iban: 'FR76 1027 8073 1900 0214 8901 245',
+            bic: 'CMCIFR2AXXX',
+            vatExempt: true,
+            legalFooter: 'TVA non applicable, art. 293 B du CGI. Dispensé d\'immatriculation au registre du commerce et des sociétés (RCS) et au répertoire des métiers (RM).'
+          }
+        ],
+        clients: [
+          {
+            id: 'cli_1',
+            name: 'NexaTech Solutions SAS',
+            contact: 'Claire Valmont (Directrice Produit)',
+            siret: '849 302 118 00031',
+            email: 'c.valmont@nexatech.io',
+            address: '128 Boulevard Haussmann, 75008 Paris'
+          },
+          {
+            id: 'cli_2',
+            name: 'Boulangerie Artisanale Le Levain',
+            contact: 'Marc-Antoine Delacroix',
+            siret: '792 410 559 00012',
+            email: 'contact@lelevain-artisan.fr',
+            address: '8 Place du Marché, 33000 Bordeaux'
+          },
+          {
+            id: 'cli_3',
+            name: 'Cabinet d\'Architecture Lemaire',
+            contact: 'Sophie Lemaire',
+            siret: '518 904 221 00029',
+            email: 's.lemaire@archilemaire.fr',
+            address: '25 Quai Saint-Antoine, 69002 Lyon'
+          }
+        ],
+        catalog: [
+          {
+            id: 'cat_1',
+            title: 'Audit & Conseil Stratégique UX/UI',
+            description: 'Analyse ergonomique complète, parcours utilisateurs et recommandations d\'optimisation de conversion.',
+            unit: 'forfait',
+            unitPrice: 1450,
+            vatRate: 20
+          },
+          {
+            id: 'cat_2',
+            title: 'Développement Interface Web & Design System',
+            description: 'Conception et intégration front-end haute performance responsive avec composants réutilisables.',
+            unit: 'jour',
+            unitPrice: 650,
+            vatRate: 20
+          },
+          {
+            id: 'cat_3',
+            title: 'Intégration API & Architecture Backend',
+            description: 'Développement des endpoints sécurisés, base de données et synchronisation temps réel.',
+            unit: 'jour',
+            unitPrice: 720,
+            vatRate: 20
+          },
+          {
+            id: 'cat_4',
+            title: 'Maintenance Évolutive & Support Prioritaire',
+            description: 'Monitoring 24/7, mises à jour de sécurité et correctifs sous 4h ouvrées.',
+            unit: 'mois',
+            unitPrice: 490,
+            vatRate: 20
+          },
+          {
+            id: 'cat_5',
+            title: 'Formation Équipe & Documentation Technique',
+            description: 'Session de prise en main complète des outils et livraison du guide administrateur.',
+            unit: 'heure',
+            unitPrice: 130,
+            vatRate: 10
+          }
+        ],
+        quotes: [
+          {
+            id: 'q_1',
+            type: 'Devis',
+            number: 'DEV-2026-001',
+            status: 'Accepté',
+            date: '2026-11-12',
+            validUntil: '2026-12-12',
+            clientId: 'cli_1',
+            subject: 'Refonte Portail Client SaaS & Design System',
+            lines: [
+              { id: 'l_1', title: 'Audit & Conseil Stratégique UX/UI', description: 'Analyse des parcours actuels et maquettage Figma haute fidélité.', qty: 1, unit: 'forfait', unitPrice: 1450, discount: 0, discountType: 'percent', vatRate: 20 },
+              { id: 'l_2', title: 'Développement Interface Web & Design System', description: 'Intégration front-end moderne avec mode sombre natif.', qty: 6, unit: 'jour', unitPrice: 650, discount: 5, discountType: 'percent', vatRate: 20 },
+              { id: 'l_3', title: 'Formation Équipe & Documentation Technique', description: 'Ateliers de transfert de compétences auprès des équipes internes.', qty: 4, unit: 'heure', unitPrice: 130, discount: 0, discountType: 'percent', vatRate: 10 }
+            ],
+            globalDiscount: 0,
+            globalDiscountType: 'percent',
+            depositValue: 30,
+            depositType: 'percent',
+            paymentTerms: 'Acompte de 30% à la signature, solde à 30 jours fin de mois par virement.',
+            notes: 'Livraison prévue sous 3 semaines ouvrées après réception de l\'acompte.'
+          },
+          {
+            id: 'q_2',
+            type: 'Devis',
+            number: 'DEV-2026-002',
+            status: 'Envoyé',
+            date: '2026-11-20',
+            validUntil: '2026-12-20',
+            clientId: 'cli_3',
+            subject: 'Application Web de Suivi de Chantiers & Portfolio',
+            lines: [
+              { id: 'l_4', title: 'Développement Interface Web & Design System', description: 'Création de l\'espace client et galerie projets haute définition.', qty: 4, unit: 'jour', unitPrice: 650, discount: 0, discountType: 'percent', vatRate: 20 },
+              { id: 'l_5', title: 'Intégration API & Architecture Backend', description: 'Connexion GED et partage sécurisé des plans PDF.', qty: 3, unit: 'jour', unitPrice: 720, discount: 0, discountType: 'percent', vatRate: 20 }
+            ],
+            globalDiscount: 200,
+            globalDiscountType: 'amount',
+            depositValue: 40,
+            depositType: 'percent',
+            paymentTerms: '40% à la commande, 60% à la mise en production.',
+            notes: 'Hébergement haute disponibilité inclus la première année.'
+          },
+          {
+            id: 'q_3',
+            type: 'Devis',
+            number: 'DEV-2026-003',
+            status: 'Brouillon',
+            date: '2026-11-25',
+            validUntil: '2026-12-25',
+            clientId: 'cli_2',
+            subject: 'Boutique Click & Collect & Carte Digitale',
+            lines: [
+              { id: 'l_6', title: 'Développement Interface Web & Design System', description: 'Interface de commande mobile ultra-rapide.', qty: 3, unit: 'jour', unitPrice: 650, discount: 0, discountType: 'percent', vatRate: 20 },
+              { id: 'l_7', title: 'Maintenance Évolutive & Support Prioritaire', description: 'Forfait trimestriel d\'assistance et sauvegardes.', qty: 3, unit: 'mois', unitPrice: 490, discount: 10, discountType: 'percent', vatRate: 20 }
+            ],
+            globalDiscount: 0,
+            globalDiscountType: 'percent',
+            depositValue: 500,
+            depositType: 'amount',
+            paymentTerms: 'Règlement à réception de facture.',
+            notes: ''
+          }
+        ],
+        currentQuoteId: 'q_1'
+      };
+    }
+
+    // --- STATE MANAGEMENT ---
+    let appState = loadState();
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          return JSON.parse(raw);
+        }
+      } catch (e) {
+        console.error('Erreur chargement localStorage:', e);
+      }
+      return getDefaultState();
+    }
+
+    function persistState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error('Erreur sauvegarde localStorage:', e);
+      }
+    }
+
+    function resetDemoData() {
+      appState = getDefaultState();
+      persistState();
+      initApp();
+      showToast('Données de démonstration réinitialisées', 'success');
+    }
+
+    // --- HELPERS ---
+    function getActiveProfile() {
+      return appState.profiles.find(p => p.id === appState.activeProfileId) || appState.profiles[0];
+    }
+
+    function getCurrentQuote() {
+      return appState.quotes.find(q => q.id === appState.currentQuoteId) || appState.quotes[0];
+    }
+
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount || 0);
+    }
+
+    function formatDateFR(isoDate) {
+      if (!isoDate) return '—';
+      const parts = isoDate.split('-');
+      if (parts.length !== 3) return isoDate;
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function generateNextNumber(type = 'Devis') {
+      const prefix = type === 'Facture' ? 'FAC-2026-' : 'DEV-2026-';
+      const matching = appState.quotes.filter(q => q.number && q.number.startsWith(prefix));
+      let maxNum = 0;
+      matching.forEach(q => {
+        const numPart = parseInt(q.number.replace(prefix, ''), 10);
+        if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+      });
+      return `${prefix}${String(maxNum + 1).padStart(3, '0')}`;
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const borderClass = type === 'success' ? 'border-[#CCFF00]/50' : 'border-white/15';
+      const iconColor = type === 'success' ? 'text-[#CCFF00]' : 'text-sky-400';
+
+      toast.className = `pointer-events-auto glass-panel ${borderClass} px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs sm:text-sm font-medium text-white transition-all duration-300 translate-y-2 opacity-0`;
+      toast.innerHTML = `
+        <i data-lucide="zap" class="w-4 h-4 ${iconColor} shrink-0"></i>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // --- FINANCIAL CALCULATIONS ENGINE ---
+    function calculateQuoteTotals(quote, profile) {
+      const isVatExempt = profile ? profile.vatExempt : false;
+
+      let subtotalHT = 0;
+      const lineDetails = quote.lines.map(line => {
+        const qty = parseFloat(line.qty) || 0;
+        const unitPrice = parseFloat(line.unitPrice) || 0;
+        const gross = qty * unitPrice;
+        const discVal = parseFloat(line.discount) || 0;
+        let lineDiscountAmount = 0;
+        if (discVal > 0) {
+          lineDiscountAmount = line.discountType === 'amount'
+            ? Math.min(gross, discVal)
+            : gross * (discVal / 100);
+        }
+        const netHT = Math.max(0, gross - lineDiscountAmount);
+        subtotalHT += netHT;
+        return {
+          ...line,
+          gross,
+          lineDiscountAmount,
+          netHT,
+          vatRate: isVatExempt ? 0 : (parseFloat(line.vatRate) || 0)
+        };
+      });
+
+      // Global Discount
+      let globalDiscountAmount = 0;
+      const gDisc = parseFloat(quote.globalDiscount) || 0;
+      if (gDisc > 0 && subtotalHT > 0) {
+        globalDiscountAmount = quote.globalDiscountType === 'amount'
+          ? Math.min(subtotalHT, gDisc)
+          : subtotalHT * (gDisc / 100);
+      }
+
+      const totalHT = Math.max(0, subtotalHT - globalDiscountAmount);
+      const discountRatio = subtotalHT > 0 ? (totalHT / subtotalHT) : 1;
+
+      // VAT Breakdown by Rate
+      const vatBreakdown = {};
+      let totalVAT = 0;
+
+      if (!isVatExempt) {
+        lineDetails.forEach(ld => {
+          const rate = ld.vatRate;
+          if (rate > 0) {
+            const taxableBase = ld.netHT * discountRatio;
+            const vatAmount = taxableBase * (rate / 100);
+            if (!vatBreakdown[rate]) {
+              vatBreakdown[rate] = { rate, base: 0, amount: 0 };
+            }
+            vatBreakdown[rate].base += taxableBase;
+            vatBreakdown[rate].amount += vatAmount;
+            totalVAT += vatAmount;
+          }
+        });
+      }
+
+      const totalTTC = totalHT + totalVAT;
+
+      // Deposit calculation
+      let depositAmount = 0;
+      const depVal = parseFloat(quote.depositValue) || 0;
+      if (depVal > 0 && totalTTC > 0) {
+        depositAmount = quote.depositType === 'amount'
+          ? Math.min(totalTTC, depVal)
+          : totalTTC * (depVal / 100);
+      }
+
+      const remainingToPay = Math.max(0, totalTTC - depositAmount);
+
+      return {
+        isVatExempt,
+        lineDetails,
+        subtotalHT,
+        globalDiscountAmount,
+        totalHT,
+        vatBreakdown: Object.values(vatBreakdown).sort((a, b) => b.rate - a.rate),
+        totalVAT,
+        totalTTC,
+        depositAmount,
+        remainingToPay
+      };
+    }
+
+    // --- NAVIGATION & HEADER ---
+    function navigateTo(viewName) {
+      appState.activeView = viewName;
+      persistState();
+
+      const views = ['dashboard', 'editor', 'catalog', 'clients', 'settings'];
+      views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.toggle('hidden', v !== viewName);
+      });
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const isTarget = btn.getAttribute('data-nav') === viewName;
+        if (isTarget) {
+          btn.className = 'nav-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap bg-[#CCFF00] text-[#050B14] shadow-[0_0_15px_rgba(204,255,0,0.25)]';
+        } else {
+          btn.className = 'nav-btn flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-slate-300 hover:text-white hover:bg-white/5';
+        }
+      });
+
+      if (viewName === 'dashboard') renderDashboard();
+      if (viewName === 'editor') renderEditor();
+      if (viewName === 'catalog') renderCatalog();
+      if (viewName === 'clients') renderClients();
+      if (viewName === 'settings') renderSettings();
+
+      lucide.createIcons();
+    }
+
+    function renderHeaderProfileSelect() {
+      const select = document.getElementById('header-profile-select');
+      select.innerHTML = appState.profiles.map(p => `
+        <option value="${p.id}" ${p.id === appState.activeProfileId ? 'selected' : ''} class="bg-[#050B14] text-white">
+          ${p.name}
+        </option>
+      `).join('');
+
+      const active = getActiveProfile();
+      const banner = document.getElementById('banner-company-info');
+      const modeText = active.vatExempt
+        ? 'Franchise en base de TVA (Art. 293 B du CGI — Colonnes TVA masquées)'
+        : 'Régime Réel Société (TVA Multi-taux 20% / 10% / 5.5% activée)';
+
+      banner.innerHTML = `Profil actif : <strong class="text-white">${active.name}</strong> — <span class="text-[#CCFF00]">${modeText}</span>`;
+    }
+
+    function switchCompanyProfile(profileId) {
+      appState.activeProfileId = profileId;
+      persistState();
+      renderHeaderProfileSelect();
+
+      if (appState.activeView === 'dashboard') renderDashboard();
+      if (appState.activeView === 'editor') renderEditor();
+      if (appState.activeView === 'settings') renderSettings();
+
+      const prof = getActiveProfile();
+      showToast(`Profil basculé sur ${prof.name}`, 'success');
+    }
+
+    // --- DASHBOARD RENDERING ---
+    function getStatusBadgeHTML(status) {
+      const styles = {
+        'Brouillon': 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+        'Envoyé': 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+        'Accepté': 'bg-[#CCFF00]/15 text-[#CCFF00] border-[#CCFF00]/40',
+        'Refusé': 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+        'Facturé': 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+      };
+      const cls = styles[status] || styles['Brouillon'];
+      return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${cls}">${status}</span>`;
+    }
+
+    function renderDashboard() {
+      const profile = getActiveProfile();
+      let totalQuotedHT = 0;
+      let totalQuotedTTC = 0;
+      let pendingAmount = 0;
+      let pendingCount = 0;
+      let acceptedCount = 0;
+      let invoicesCount = 0;
+
+      appState.quotes.forEach(q => {
+        const calc = calculateQuoteTotals(q, profile);
+        if (q.type === 'Facture' || q.status === 'Facturé') {
+          invoicesCount++;
+        }
+        if (q.status !== 'Refusé') {
+          totalQuotedHT += calc.totalHT;
+          totalQuotedTTC += calc.totalTTC;
+        }
+        if (q.status === 'Envoyé' || q.status === 'Brouillon') {
+          pendingAmount += calc.totalTTC;
+          pendingCount++;
+        }
+        if (q.status === 'Accepté' || q.status === 'Facturé') {
+          acceptedCount++;
+        }
+      });
+
+      const totalQuotesOnly = appState.quotes.length;
+      const conversionRate = totalQuotesOnly > 0 ? Math.round((acceptedCount / totalQuotesOnly) * 100) : 0;
+
+      const kpiContainer = document.getElementById('dashboard-kpis');
+      kpiContainer.innerHTML = `
+        <div class="glass-panel rounded-2xl p-5 glass-card-hover">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Volume Devisé (${profile.vatExempt ? 'Net' : 'TTC'})</span>
+            <div class="w-8 h-8 rounded-lg bg-[#CCFF00]/15 text-[#CCFF00] flex items-center justify-center">
+              <i data-lucide="trending-up" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3 font-mono-num text-2xl font-extrabold text-white">${formatCurrency(totalQuotedTTC)}</div>
+          <div class="mt-1 text-xs text-slate-400 font-mono-num">Soit ${formatCurrency(totalQuotedHT)} HT</div>
+        </div>
+
+        <div class="glass-panel rounded-2xl p-5 glass-card-hover">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Taux de conversion</span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+              <i data-lucide="check-circle" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3 font-mono-num text-2xl font-extrabold text-[#CCFF00]">${conversionRate}%</div>
+          <div class="mt-1 text-xs text-slate-400">${acceptedCount} devis signé(s) sur ${totalQuotesOnly}</div>
+        </div>
+
+        <div class="glass-panel rounded-2xl p-5 glass-card-hover">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">En attente de réponse</span>
+            <div class="w-8 h-8 rounded-lg bg-sky-500/15 text-sky-400 flex items-center justify-center">
+              <i data-lucide="clock" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3 font-mono-num text-2xl font-extrabold text-white">${formatCurrency(pendingAmount)}</div>
+          <div class="mt-1 text-xs text-slate-400">${pendingCount} document(s) en cours</div>
+        </div>
+
+        <div class="glass-panel rounded-2xl p-5 glass-card-hover">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Factures générées</span>
+            <div class="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center">
+              <i data-lucide="receipt" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3 font-mono-num text-2xl font-extrabold text-white">${invoicesCount}</div>
+          <div class="mt-1 text-xs text-slate-400">Conversion 1-clic active</div>
+        </div>
+      `;
+
+      // Status Pills
+      const statuses = ['Tous', 'Brouillon', 'Envoyé', 'Accepté', 'Refusé', 'Facturé'];
+      document.getElementById('status-filter-pills').innerHTML = statuses.map(st => {
+        const active = appState.statusFilter === st;
+        return `
+          <button onclick="setStatusFilter('${st}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+            active ? 'bg-[#CCFF00] text-[#050B14] font-bold' : 'text-slate-400 hover:text-white'
+          }">${st}</button>
+        `;
+      }).join('');
+
+      // Filter Quotes
+      const searchQuery = (document.getElementById('quote-search-input')?.value || '').toLowerCase().trim();
+      const filteredQuotes = appState.quotes.filter(q => {
+        const client = appState.clients.find(c => c.id === q.clientId);
+        const clientName = client ? client.name.toLowerCase() : '';
+        const matchesStatus = appState.statusFilter === 'Tous' || q.status === appState.statusFilter;
+        const matchesSearch = !searchQuery ||
+          q.number.toLowerCase().includes(searchQuery) ||
+          (q.subject || '').toLowerCase().includes(searchQuery) ||
+          clientName.includes(searchQuery);
+        return matchesStatus && matchesSearch;
+      });
+
+      const tbody = document.getElementById('quotes-table-body');
+      if (filteredQuotes.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-10 text-center text-slate-400 text-sm">
+              Aucun document ne correspond à vos critères de recherche.
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      tbody.innerHTML = filteredQuotes.map(q => {
+        const client = appState.clients.find(c => c.id === q.clientId);
+        const calc = calculateQuoteTotals(q, profile);
+        const isInvoice = q.type === 'Facture';
+
+        return `
+          <tr class="hover:bg-white/[0.03] transition-colors group">
+            <td class="py-3.5 px-4 whitespace-nowrap">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono-num font-bold px-1.5 py-0.5 rounded ${isInvoice ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-slate-300'}">
+                  ${isInvoice ? 'FAC' : 'DEV'}
+                </span>
+                <button onclick="openQuoteInEditor('${q.id}')" class="font-mono-num font-bold text-white hover:text-[#CCFF00] transition-colors">
+                  ${q.number}
+                </button>
+              </div>
+            </td>
+            <td class="py-3.5 px-4">
+              <div class="font-semibold text-white">${client ? client.name : 'Client non défini'}</div>
+              <div class="text-xs text-slate-400 truncate max-w-xs">${q.subject || 'Sans objet'}</div>
+            </td>
+            <td class="py-3.5 px-4 font-mono-num text-xs text-slate-300 whitespace-nowrap">
+              ${formatDateFR(q.date)}
+            </td>
+            <td class="py-3.5 px-4 text-right font-mono-num text-slate-300 whitespace-nowrap">
+              ${formatCurrency(calc.totalHT)}
+            </td>
+            <td class="py-3.5 px-4 text-right font-mono-num font-bold text-[#CCFF00] whitespace-nowrap">
+              ${formatCurrency(calc.totalTTC)}
+            </td>
+            <td class="py-3.5 px-4 whitespace-nowrap">
+              ${getStatusBadgeHTML(q.status)}
+            </td>
+            <td class="py-3.5 px-4 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-1">
+                <button onclick="openQuoteInEditor('${q.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-[#CCFF00] text-slate-300 hover:text-[#050B14] transition-all" title="Éditer & Aperçu PDF">
+                  <i data-lucide="pen-square" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="duplicateQuoteById('${q.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all" title="Dupliquer en 1 clic">
+                  <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                </button>
+                ${!isInvoice ? `
+                  <button onclick="convertQuoteByIdToInvoice('${q.id}')" class="p-2 rounded-lg bg-sky-500/10 hover:bg-sky-500/25 text-sky-300 transition-all" title="Convertir en Facture">
+                    <i data-lucide="file-check-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                ` : ''}
+                <button onclick="deleteQuoteById('${q.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-all" title="Supprimer">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function setStatusFilter(st) {
+      appState.statusFilter = st;
+      renderDashboard();
+    }
+
+    // --- QUOTE ACTIONS ---
+    function createNewQuote() {
+      const today = new Date().toISOString().split('T')[0];
+      const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+      const defaultClient = appState.clients[0] ? appState.clients[0].id : '';
+
+      const newQuote = {
+        id: 'q_' + Date.now(),
+        type: 'Devis',
+        number: generateNextNumber('Devis'),
+        status: 'Brouillon',
+        date: today,
+        validUntil: nextMonth,
+        clientId: defaultClient,
+        subject: '',
+        lines: [
+          {
+            id: 'l_' + Date.now(),
+            title: 'Prestation de conseil & réalisation',
+            description: '',
+            qty: 1,
+            unit: 'forfait',
+            unitPrice: 500,
+            discount: 0,
+            discountType: 'percent',
+            vatRate: 20
+          }
+        ],
+        globalDiscount: 0,
+        globalDiscountType: 'percent',
+        depositValue: 0,
+        depositType: 'percent',
+        paymentTerms: 'Règlement à 30 jours par virement bancaire.',
+        notes: ''
+      };
+
+      appState.quotes.unshift(newQuote);
+      appState.currentQuoteId = newQuote.id;
+      persistState();
+      navigateTo('editor');
+      showToast(`Nouveau devis ${newQuote.number} créé`, 'success');
+    }
+
+    function openQuoteInEditor(quoteId) {
+      appState.currentQuoteId = quoteId;
+      persistState();
+      navigateTo('editor');
+    }
+
+    function duplicateQuoteById(quoteId) {
+      const source = appState.quotes.find(q => q.id === quoteId);
+      if (!source) return;
+      const copy = JSON.parse(JSON.stringify(source));
+      copy.id = 'q_' + Date.now();
+      copy.type = 'Devis';
+      copy.number = generateNextNumber('Devis');
+      copy.status = 'Brouillon';
+      copy.date = new Date().toISOString().split('T')[0];
+      copy.lines.forEach((l, idx) => l.id = 'l_' + Date.now() + '_' + idx);
+
+      appState.quotes.unshift(copy);
+      appState.currentQuoteId = copy.id;
+      persistState();
+      if (appState.activeView === 'dashboard') renderDashboard();
+      if (appState.activeView === 'editor') renderEditor();
+      showToast(`Devis dupliqué sous le n° ${copy.number}`, 'success');
+    }
+
+    function duplicateCurrentQuote() {
+      duplicateQuoteById(appState.currentQuoteId);
+    }
+
+    function convertQuoteByIdToInvoice(quoteId) {
+      const source = appState.quotes.find(q => q.id === quoteId);
+      if (!source) return;
+
+      source.status = 'Facturé';
+      const invoice = JSON.parse(JSON.stringify(source));
+      invoice.id = 'q_' + Date.now();
+      invoice.type = 'Facture';
+      invoice.number = generateNextNumber('Facture');
+      invoice.status = 'Envoyé';
+      invoice.date = new Date().toISOString().split('T')[0];
+      invoice.validUntil = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+      invoice.lines.forEach((l, idx) => l.id = 'l_' + Date.now() + '_' + idx);
+
+      appState.quotes.unshift(invoice);
+      appState.currentQuoteId = invoice.id;
+      persistState();
+      navigateTo('editor');
+      showToast(`Converti en Facture ${invoice.number}`, 'success');
+    }
+
+    function convertCurrentToInvoice() {
+      convertQuoteByIdToInvoice(appState.currentQuoteId);
+    }
+
+    function deleteQuoteById(quoteId) {
+      if (appState.quotes.length <= 1) {
+        showToast('Impossible de supprimer le dernier document', 'info');
+        return;
+      }
+      appState.quotes = appState.quotes.filter(q => q.id !== quoteId);
+      if (appState.currentQuoteId === quoteId) {
+        appState.currentQuoteId = appState.quotes[0].id;
+      }
+      persistState();
+      renderDashboard();
+      showToast('Document supprimé', 'info');
+    }
+
+    // --- EDITOR RENDERING & REAL-TIME SYNC ---
+    function renderEditor() {
+      const q = getCurrentQuote();
+      const profile = getActiveProfile();
+      if (!q) return;
+
+      // Top bar indicators
+      document.getElementById('editor-doc-badge').textContent = q.type.toUpperCase();
+      document.getElementById('editor-title-number').textContent = q.number;
+      document.getElementById('btn-convert-invoice').classList.toggle('hidden', q.type === 'Facture');
+
+      // Metadata fields
+      document.getElementById('ed-status').value = q.status;
+      document.getElementById('ed-type').value = q.type;
+      document.getElementById('ed-number').value = q.number;
+      document.getElementById('ed-date').value = q.date;
+      document.getElementById('ed-validUntil').value = q.validUntil;
+      document.getElementById('ed-valid-label').textContent = q.type === 'Facture' ? 'Date d\'échéance' : 'Validité jusqu\'au';
+      document.getElementById('ed-subject').value = q.subject || '';
+
+      // Client selector
+      const clientSelect = document.getElementById('ed-client-select');
+      clientSelect.innerHTML = appState.clients.map(c => `
+        <option value="${c.id}" ${c.id === q.clientId ? 'selected' : ''}>${c.name} ${c.contact ? `(${c.contact})` : ''}</option>
+      `).join('');
+
+      renderSelectedClientSummary(q.clientId);
+
+      // VAT Mode pill
+      const vatPill = document.getElementById('vat-mode-pill');
+      if (profile.vatExempt) {
+        vatPill.textContent = 'Exonéré TVA (Art. 293 B)';
+        vatPill.className = 'text-[11px] font-mono-num px-2 py-0.5 rounded bg-[#CCFF00]/15 text-[#CCFF00] border border-[#CCFF00]/30';
+      } else {
+        vatPill.textContent = 'TVA Multi-taux Active';
+        vatPill.className = 'text-[11px] font-mono-num px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30';
+      }
+
+      // Catalog quick select
+      const catSelect = document.getElementById('catalog-quick-select');
+      catSelect.innerHTML = appState.catalog.map(item => `
+        <option value="${item.id}">${item.title} — ${formatCurrency(item.unitPrice)} / ${item.unit}</option>
+      `).join('');
+
+      // Lines
+      renderQuoteLinesForm(q, profile);
+
+      // Discounts & Terms
+      document.getElementById('ed-globalDiscount').value = q.globalDiscount || 0;
+      document.getElementById('ed-globalDiscountType').value = q.globalDiscountType || 'percent';
+      document.getElementById('ed-depositValue').value = q.depositValue || 0;
+      document.getElementById('ed-depositType').value = q.depositType || 'percent';
+      document.getElementById('ed-paymentTerms').value = q.paymentTerms || '';
+      document.getElementById('ed-notes').value = q.notes || '';
+
+      // Render A4 Preview
+      renderA4Preview();
+      applyPreviewZoom();
+      lucide.createIcons();
+    }
+
+    function renderSelectedClientSummary(clientId) {
+      const client = appState.clients.find(c => c.id === clientId);
+      const box = document.getElementById('selected-client-summary');
+      if (!client) {
+        box.innerHTML = `<span class="text-slate-400">Aucun client sélectionné.</span>`;
+        return;
+      }
+      box.innerHTML = `
+        <div class="font-bold text-white">${client.name}</div>
+        ${client.contact ? `<div>Contact : ${client.contact}</div>` : ''}
+        <div>${client.address || 'Adresse non renseignée'}</div>
+        <div class="font-mono-num text-[11px] text-slate-400">
+          ${client.siret ? `SIRET : ${client.siret}` : ''} ${client.email ? `• ${client.email}` : ''}
+        </div>
+      `;
+    }
+
+    function renderQuoteLinesForm(quote, profile) {
+      const container = document.getElementById('quote-lines-container');
+      container.innerHTML = quote.lines.map((line, index) => {
+        const lineCalc = calculateQuoteTotals({ ...quote, lines: [line], globalDiscount: 0 }, profile);
+        const lineNetHT = lineCalc.lineDetails[0].netHT;
+
+        return `
+          <div class="bg-[#050B14]/60 border border-white/10 rounded-xl p-3.5 space-y-2.5 relative group">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-2 flex-1">
+                <span class="font-mono-num text-[11px] font-bold text-[#CCFF00] bg-[#CCFF00]/10 px-2 py-0.5 rounded">#${index + 1}</span>
+                <input type="text" value="${escapeAttr(line.title)}" oninput="updateLineField('${line.id}', 'title', this.value)" placeholder="Désignation de la prestation" class="volt-input font-semibold w-full rounded-lg px-2.5 py-1.5 text-xs sm:text-sm" />
+              </div>
+              <button onclick="removeLine('${line.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors" title="Supprimer la ligne">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <textarea rows="2" oninput="updateLineField('${line.id}', 'description', this.value)" placeholder="Description détaillée (optionnelle)" class="volt-input w-full rounded-lg px-2.5 py-1.5 text-xs text-slate-300">${escapeHtml(line.description || '')}</textarea>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-0.5">Quantité</label>
+                <input type="number" step="0.5" min="0" value="${line.qty}" oninput="updateLineField('${line.id}', 'qty', parseFloat(this.value) || 0)" class="volt-input font-mono-num w-full rounded-lg px-2 py-1.5 text-xs" />
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-0.5">Unité</label>
+                <select onchange="updateLineField('${line.id}', 'unit', this.value)" class="volt-input w-full rounded-lg px-2 py-1.5 text-xs">
+                  ${['heure', 'jour', 'forfait', 'pièce', 'mois', 'm²'].map(u => `<option value="${u}" ${line.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-0.5">Prix Unit. HT (€)</label>
+                <input type="number" step="0.01" min="0" value="${line.unitPrice}" oninput="updateLineField('${line.id}', 'unitPrice', parseFloat(this.value) || 0)" class="volt-input font-mono-num w-full rounded-lg px-2 py-1.5 text-xs" />
+              </div>
+              ${!profile.vatExempt ? `
+                <div>
+                  <label class="block text-[10px] text-slate-400 mb-0.5">TVA</label>
+                  <select onchange="updateLineField('${line.id}', 'vatRate', parseFloat(this.value))" class="volt-input font-mono-num w-full rounded-lg px-2 py-1.5 text-xs">
+                    ${[20, 10, 5.5, 2.1, 0].map(r => `<option value="${r}" ${parseFloat(line.vatRate) === r ? 'selected' : ''}>${r}%</option>`).join('')}
+                  </select>
+                </div>
+              ` : `
+                <div>
+                  <label class="block text-[10px] text-slate-400 mb-0.5">Remise (%)</label>
+                  <input type="number" step="1" min="0" max="100" value="${line.discount || 0}" oninput="updateLineField('${line.id}', 'discount', parseFloat(this.value) || 0)" class="volt-input font-mono-num w-full rounded-lg px-2 py-1.5 text-xs" />
+                </div>
+              `}
+            </div>
+
+            <div class="flex items-center justify-between pt-1.5 border-t border-white/5 text-xs">
+              ${!profile.vatExempt ? `
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[11px] text-slate-400">Remise ligne :</span>
+                  <input type="number" min="0" step="0.5" value="${line.discount || 0}" oninput="updateLineField('${line.id}', 'discount', parseFloat(this.value) || 0)" class="volt-input font-mono-num w-16 rounded px-1.5 py-0.5 text-[11px]" />
+                  <select onchange="updateLineField('${line.id}', 'discountType', this.value)" class="volt-input rounded px-1 py-0.5 text-[11px]">
+                    <option value="percent" ${line.discountType !== 'amount' ? 'selected' : ''}>%</option>
+                    <option value="amount" ${line.discountType === 'amount' ? 'selected' : ''}>€</option>
+                  </select>
+                </div>
+              ` : `<span class="text-[11px] text-slate-500">TVA non applicable</span>`}
+
+              <div class="font-mono-num font-bold text-white">
+                Total ligne : <span class="text-[#CCFF00]">${formatCurrency(lineNetHT)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateQuoteField(field, value) {
+      const q = getCurrentQuote();
+      if (!q) return;
+      q[field] = value;
+      if (field === 'type') {
+        document.getElementById('editor-doc-badge').textContent = value.toUpperCase();
+        document.getElementById('ed-valid-label').textContent = value === 'Facture' ? 'Date d\'échéance' : 'Validité jusqu\'au';
+      }
+      if (field === 'number') {
+        document.getElementById('editor-title-number').textContent = value;
+      }
+      triggerAutoSave();
+      renderA4Preview();
+    }
+
+    function selectQuoteClient(clientId) {
+      const q = getCurrentQuote();
+      if (!q) return;
+      q.clientId = clientId;
+      renderSelectedClientSummary(clientId);
+      triggerAutoSave();
+      renderA4Preview();
+    }
+
+    function toggleQuickClientForm() {
+      const box = document.getElementById('quick-client-box');
+      box.classList.toggle('hidden');
+    }
+
+    function saveQuickClient() {
+      const name = document.getElementById('qc-name').value.trim();
+      if (!name) {
+        showToast('Veuillez saisir la raison sociale ou le nom du client', 'info');
+        return;
+      }
+      const newClient = {
+        id: 'cli_' + Date.now(),
+        name,
+        contact: document.getElementById('qc-contact').value.trim(),
+        siret: document.getElementById('qc-siret').value.trim(),
+        email: document.getElementById('qc-email').value.trim(),
+        address: document.getElementById('qc-address').value.trim()
+      };
+      appState.clients.unshift(newClient);
+      const q = getCurrentQuote();
+      q.clientId = newClient.id;
+
+      // Reset quick form
+      ['qc-name', 'qc-contact', 'qc-siret', 'qc-email', 'qc-address'].forEach(id => document.getElementById(id).value = '');
+      toggleQuickClientForm();
+      triggerAutoSave();
+      renderEditor();
+      showToast(`Client "${newClient.name}" ajouté et sélectionné`, 'success');
+    }
+
+    function addCatalogItemToQuote() {
+      const select = document.getElementById('catalog-quick-select');
+      const item = appState.catalog.find(c => c.id === select.value);
+      if (!item) return;
+
+      const q = getCurrentQuote();
+      q.lines.push({
+        id: 'l_' + Date.now(),
+        title: item.title,
+        description: item.description,
+        qty: 1,
+        unit: item.unit,
+        unitPrice: item.unitPrice,
+        discount: 0,
+        discountType: 'percent',
+        vatRate: item.vatRate
+      });
+
+      triggerAutoSave();
+      renderEditor();
+      showToast(`"${item.title}" ajouté au devis`, 'success');
+    }
+
+    function addEmptyLine() {
+      const q = getCurrentQuote();
+      q.lines.push({
+        id: 'l_' + Date.now(),
+        title: '',
+        description: '',
+        qty: 1,
+        unit: 'jour',
+        unitPrice: 0,
+        discount: 0,
+        discountType: 'percent',
+        vatRate: 20
+      });
+      triggerAutoSave();
+      renderEditor();
+    }
+
+    function updateLineField(lineId, field, value) {
+      const q = getCurrentQuote();
+      const line = q.lines.find(l => l.id === lineId);
+      if (!line) return;
+      line[field] = value;
+      triggerAutoSave();
+      // Re-render only A4 and line subtotal without losing input focus
+      renderA4Preview();
+      const profile = getActiveProfile();
+      const lineCalc = calculateQuoteTotals({ ...q, lines: [line], globalDiscount: 0 }, profile);
+      const lineNetHT = lineCalc.lineDetails[0].netHT;
+      const lineContainers = document.getElementById('quote-lines-container').children;
+      const idx = q.lines.findIndex(l => l.id === lineId);
+      if (lineContainers[idx]) {
+        const totalSpan = lineContainers[idx].querySelector('.text-\\[\\#CCFF00\\]:last-child');
+        if (totalSpan) totalSpan.textContent = formatCurrency(lineNetHT);
+      }
+    }
+
+    function removeLine(lineId) {
+      const q = getCurrentQuote();
+      if (q.lines.length <= 1) {
+        showToast('Un document doit contenir au moins une ligne', 'info');
+        return;
+      }
+      q.lines = q.lines.filter(l => l.id !== lineId);
+      triggerAutoSave();
+      renderEditor();
+    }
+
+    function triggerAutoSave() {
+      persistState();
+      const ind = document.getElementById('autosave-indicator');
+      if (ind) {
+        ind.innerHTML = `<i data-lucide="refresh-cw" class="w-3 h-3 animate-spin text-[#CCFF00]"></i> Enregistrement...`;
+        lucide.createIcons();
+        setTimeout(() => {
+          ind.innerHTML = `<i data-lucide="check-circle-2" class="w-3 h-3"></i> Sauvegardé automatiquement`;
+          lucide.createIcons();
+        }, 450);
+      }
+    }
+
+    function saveCurrentQuote(notify = false) {
+      persistState();
+      if (notify) showToast('Document enregistré avec succès', 'success');
+    }
+
+    // --- REAL-TIME A4 DOCUMENT RENDERER ---
+    function renderA4Preview() {
+      const q = getCurrentQuote();
+      const profile = getActiveProfile();
+      const client = appState.clients.find(c => c.id === q.clientId);
+      const calc = calculateQuoteTotals(q, profile);
+      const isInvoice = q.type === 'Facture';
+
+      const initials = profile.name
+        .split(' ')
+        .slice(0, 2)
+        .map(w => w[0])
+        .join('')
+        .toUpperCase();
+
+      const html = `
+        <!-- TOP SECTION: HEADER & PARTIES -->
+        <div>
+          <!-- Header Row -->
+          <div class="flex justify-between items-start border-b-2 border-slate-900 pb-6">
+            <div class="flex items-start gap-3.5">
+              <div class="w-12 h-12 rounded-xl bg-slate-900 text-[#CCFF00] font-extrabold text-lg flex items-center justify-center shrink-0 tracking-tight">
+                ${initials || 'VQ'}
+              </div>
+              <div>
+                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">${escapeHtml(profile.name)}</h1>
+                <p class="text-xs font-medium text-slate-600">${escapeHtml(profile.legalForm)}</p>
+                <p class="text-xs text-slate-500 mt-1">${escapeHtml(profile.address)}</p>
+                <p class="text-xs text-slate-500 font-mono-num">
+                  ${profile.email ? escapeHtml(profile.email) : ''} ${profile.phone ? `• ${escapeHtml(profile.phone)}` : ''}
+                </p>
+              </div>
+            </div>
+
+            <div class="text-right">
+              <div class="inline-block px-3 py-1 rounded bg-slate-900 text-[#CCFF00] font-extrabold text-xs uppercase tracking-widest mb-2">
+                ${isInvoice ? 'FACTURE' : 'DEVIS'}
+              </div>
+              <div class="font-mono-num text-xl font-extrabold text-slate-900">${escapeHtml(q.number)}</div>
+              <div class="text-xs text-slate-600 mt-1 space-y-0.5 font-mono-num">
+                <div>Émis le : <strong class="text-slate-900">${formatDateFR(q.date)}</strong></div>
+                <div>${isInvoice ? 'Échéance' : 'Valable jusqu\'au'} : <strong class="text-slate-900">${formatDateFR(q.validUntil)}</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sender Legal IDs & Recipient Box -->
+          <div class="grid grid-cols-12 gap-6 mt-6">
+            <div class="col-span-6 text-[11px] text-slate-600 space-y-1">
+              <div class="font-bold uppercase tracking-wider text-slate-400 text-[10px]">Informations Émetteur</div>
+              <div class="font-mono-num">SIRET : <strong class="text-slate-800">${escapeHtml(profile.siret || '—')}</strong></div>
+              ${profile.rcs ? `<div>${escapeHtml(profile.rcs)}</div>` : ''}
+              ${profile.ape ? `<div class="font-mono-num">Code APE/NAF : ${escapeHtml(profile.ape)}</div>` : ''}
+              ${!profile.vatExempt && profile.vatNumber ? `<div class="font-mono-num">N° TVA Intra. : <strong class="text-slate-800">${escapeHtml(profile.vatNumber)}</strong></div>` : ''}
+              ${profile.vatExempt ? `<div class="inline-block mt-1 px-2 py-0.5 bg-slate-100 text-slate-800 font-semibold rounded text-[10px]">TVA non applicable, art. 293 B du CGI</div>` : ''}
+            </div>
+
+            <div class="col-span-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <div class="font-bold uppercase tracking-wider text-slate-400 text-[10px] mb-1">Destinataire / Client</div>
+              ${client ? `
+                <div class="font-bold text-sm text-slate-900">${escapeHtml(client.name)}</div>
+                ${client.contact ? `<div class="text-xs text-slate-700">À l'attention de ${escapeHtml(client.contact)}</div>` : ''}
+                <div class="text-xs text-slate-600 mt-1">${escapeHtml(client.address || '')}</div>
+                ${client.siret ? `<div class="text-[11px] font-mono-num text-slate-500 mt-1">SIRET : ${escapeHtml(client.siret)}</div>` : ''}
+                ${client.email ? `<div class="text-[11px] text-slate-500">${escapeHtml(client.email)}</div>` : ''}
+              ` : `<div class="text-xs text-slate-400 italic">Aucun client sélectionné</div>`}
+            </div>
+          </div>
+
+          <!-- Subject Banner -->
+          ${q.subject ? `
+            <div class="mt-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg flex items-center justify-between">
+              <span class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Objet :</span>
+              <span class="text-xs font-bold text-white flex-1 ml-3">${escapeHtml(q.subject)}</span>
+            </div>
+          ` : ''}
+
+          <!-- LINE ITEMS TABLE -->
+          <div class="mt-6">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b-2 border-slate-900 text-[10px] uppercase tracking-wider text-slate-600 font-bold">
+                  <th class="py-2.5 pr-3">Désignation & Description</th>
+                  <th class="py-2.5 px-2 text-right">Qté</th>
+                  <th class="py-2.5 px-2 text-right">P.U. ${profile.vatExempt ? '' : 'HT'}</th>
+                  ${!profile.vatExempt ? `<th class="py-2.5 px-2 text-right">TVA</th>` : ''}
+                  <th class="py-2.5 pl-2 text-right">Total ${profile.vatExempt ? 'Net' : 'HT'}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 text-xs">
+                ${calc.lineDetails.map(line => `
+                  <tr>
+                    <td class="py-3 pr-3 align-top">
+                      <div class="font-bold text-slate-900">${escapeHtml(line.title || 'Prestation')}</div>
+                      ${line.description ? `<div class="text-[11px] text-slate-600 mt-0.5 leading-relaxed whitespace-pre-line">${escapeHtml(line.description)}</div>` : ''}
+                      ${line.lineDiscountAmount > 0 ? `<div class="text-[10px] font-mono-num text-emerald-700 font-semibold mt-0.5">Remise ligne appliquée : -${formatCurrency(line.lineDiscountAmount)}</div>` : ''}
+                    </td>
+                    <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-800">
+                      ${line.qty} <span class="text-[10px] text-slate-500">${escapeHtml(line.unit)}</span>
+                    </td>
+                    <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-800">
+                      ${formatCurrency(line.unitPrice)}
+                    </td>
+                    ${!profile.vatExempt ? `
+                      <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-600">
+                        ${line.vatRate}%
+                      </td>
+                    ` : ''}
+                    <td class="py-3 pl-2 text-right font-mono-num font-bold align-top whitespace-nowrap text-slate-900">
+                      ${formatCurrency(line.netHT)}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- TOTALS & VAT BREAKDOWN -->
+          <div class="mt-6 grid grid-cols-12 gap-6 items-start">
+            <!-- Left: Payment terms & Bank details -->
+            <div class="col-span-6 space-y-3 text-[11px] text-slate-600">
+              ${q.paymentTerms ? `
+                <div>
+                  <div class="font-bold text-slate-800 uppercase text-[10px] tracking-wider">Conditions de règlement</div>
+                  <p class="mt-0.5">${escapeHtml(q.paymentTerms)}</p>
+                </div>
+              ` : ''}
+              ${q.notes ? `
+                <div>
+                  <div class="font-bold text-slate-800 uppercase text-[10px] tracking-wider">Notes</div>
+                  <p class="mt-0.5 whitespace-pre-line">${escapeHtml(q.notes)}</p>
+                </div>
+              ` : ''}
+              ${profile.iban ? `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 font-mono-num text-[10px]">
+                  <div class="font-sans font-bold text-slate-700 uppercase text-[9px] mb-0.5">Coordonnées Bancaires (Virement)</div>
+                  <div>IBAN : <strong class="text-slate-900">${escapeHtml(profile.iban)}</strong></div>
+                  ${profile.bic ? `<div>BIC : <strong class="text-slate-900">${escapeHtml(profile.bic)}</strong></div>` : ''}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Right: Financial Summary Box -->
+            <div class="col-span-6 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 text-xs">
+              <div class="flex justify-between text-slate-600">
+                <span>Sous-total ${profile.vatExempt ? 'Net' : 'HT'}</span>
+                <span class="font-mono-num font-semibold text-slate-900">${formatCurrency(calc.subtotalHT)}</span>
+              </div>
+
+              ${calc.globalDiscountAmount > 0 ? `
+                <div class="flex justify-between text-emerald-700 font-medium">
+                  <span>Remise globale ${q.globalDiscountType === 'percent' ? `(${q.globalDiscount}%)` : ''}</span>
+                  <span class="font-mono-num">- ${formatCurrency(calc.globalDiscountAmount)}</span>
+                </div>
+                <div class="flex justify-between text-slate-700 font-semibold border-t border-slate-200 pt-1.5">
+                  <span>Total ${profile.vatExempt ? 'Net' : 'HT'} après remise</span>
+                  <span class="font-mono-num">${formatCurrency(calc.totalHT)}</span>
+                </div>
+              ` : ''}
+
+              ${!profile.vatExempt ? `
+                ${calc.vatBreakdown.map(v => `
+                  <div class="flex justify-between text-slate-600 text-[11px]">
+                    <span>TVA ${v.rate}% <span class="text-slate-400">(base ${formatCurrency(v.base)})</span></span>
+                    <span class="font-mono-num">${formatCurrency(v.amount)}</span>
+                  </div>
+                `).join('')}
+                <div class="flex justify-between text-slate-700 font-semibold border-t border-slate-200 pt-1.5">
+                  <span>Total TVA</span>
+                  <span class="font-mono-num">${formatCurrency(calc.totalVAT)}</span>
+                </div>
+              ` : `
+                <div class="text-[10px] text-slate-500 italic pt-1">
+                  TVA non applicable, art. 293 B du CGI.
+                </div>
+              `}
+
+              <div class="flex justify-between items-center bg-slate-900 text-white px-3.5 py-2.5 rounded-lg mt-2">
+                <span class="font-bold uppercase tracking-wider text-xs">${profile.vatExempt ? 'Net à payer' : 'Total TTC'}</span>
+                <span class="font-mono-num font-extrabold text-base text-[#CCFF00]">${formatCurrency(calc.totalTTC)}</span>
+              </div>
+
+              ${calc.depositAmount > 0 ? `
+                <div class="pt-2 border-t border-slate-200 space-y-1 text-[11px]">
+                  <div class="flex justify-between text-slate-700 font-semibold">
+                    <span>Acompte à la commande ${q.depositType === 'percent' ? `(${q.depositValue}%)` : ''}</span>
+                    <span class="font-mono-num">${formatCurrency(calc.depositAmount)}</span>
+                  </div>
+                  <div class="flex justify-between text-slate-500">
+                    <span>Reste à payer à livraison</span>
+                    <span class="font-mono-num">${formatCurrency(calc.remainingToPay)}</span>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+
+        <!-- BOTTOM SECTION: SIGNATURE & LEGAL FOOTER -->
+        <div class="mt-8 pt-4 border-t border-slate-200">
+          ${!isInvoice ? `
+            <div class="grid grid-cols-2 gap-6 mb-5">
+              <div class="text-[10px] text-slate-500">
+                <strong class="text-slate-700">Acceptation du devis :</strong><br/>
+                Ce devis est valable jusqu'au ${formatDateFR(q.validUntil)}. Pour acceptation, merci de retourner ce document daté et signé avec la mention « Bon pour accord ».
+              </div>
+              <div class="border border-dashed border-slate-300 rounded-lg p-3 h-20 flex flex-col justify-between">
+                <span class="text-[10px] font-semibold text-slate-400">Date, signature & cachet du client (« Bon pour accord ») :</span>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="text-[9px] text-slate-400 text-center leading-relaxed">
+            ${escapeHtml(profile.name)} — ${escapeHtml(profile.legalForm)} — SIRET ${escapeHtml(profile.siret)}<br/>
+            ${escapeHtml(profile.legalFooter || '')}
+          </div>
+        </div>
+      `;
+
+      document.getElementById('a4-document-render').innerHTML = html;
+      document.getElementById('print-area').innerHTML = `<div class="a4-sheet p-12 flex flex-col justify-between text-slate-900">${html}</div>`;
+    }
+
+    function adjustPreviewZoom(delta) {
+      appState.previewZoom = Math.min(1.1, Math.max(0.5, +(appState.previewZoom + delta).toFixed(2)));
+      persistState();
+      applyPreviewZoom();
+    }
+
+    function applyPreviewZoom() {
+      const sheet = document.getElementById('a4-document-render');
+      const label = document.getElementById('zoom-level-label');
+      if (sheet && label) {
+        sheet.style.transform = `scale(${appState.previewZoom})`;
+        label.textContent = `${Math.round(appState.previewZoom * 100)}%`;
+      }
+    }
+
+    function setMobileEditorTab(tab) {
+      const formPane = document.getElementById('editor-form-pane');
+      const previewPane = document.getElementById('editor-preview-pane');
+      const btnForm = document.getElementById('mob-tab-form');
+      const btnPrev = document.getElementById('mob-tab-preview');
+
+      if (tab === 'form') {
+        formPane.classList.remove('hidden');
+        previewPane.classList.add('hidden');
+        previewPane.classList.remove('flex');
+        btnForm.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#CCFF00] text-[#050B14]';
+        btnPrev.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300';
+      } else {
+        formPane.classList.add('hidden');
+        previewPane.classList.remove('hidden');
+        previewPane.classList.add('flex');
+        btnPrev.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#CCFF00] text-[#050B14]';
+        btnForm.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300';
+        renderA4Preview();
+      }
+    }
+
+    function exportToPDF() {
+      renderA4Preview();
+      showToast('Préparation du PDF haute définition...', 'success');
+      setTimeout(() => {
+        window.print();
+      }, 250);
+    }
+
+    // --- CATALOG VIEW & MODAL ---
+    function renderCatalog() {
+      const grid = document.getElementById('catalog-grid');
+      grid.innerHTML = appState.catalog.map(item => `
+        <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between glass-card-hover space-y-4">
+          <div>
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[11px] font-mono-num uppercase px-2 py-0.5 rounded bg-white/10 text-slate-300">${escapeHtml(item.unit)}</span>
+              <span class="font-mono-num font-extrabold text-lg text-[#CCFF00]">${formatCurrency(item.unitPrice)} <span class="text-xs font-normal text-slate-400">HT</span></span>
+            </div>
+            <h3 class="font-bold text-base text-white mt-3">${escapeHtml(item.title)}</h3>
+            <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">${escapeHtml(item.description || 'Aucune description')}</p>
+          </div>
+          <div class="pt-3 border-t border-white/10 flex items-center justify-between">
+            <span class="font-mono-num text-xs text-slate-400">TVA par défaut : ${item.vatRate}%</span>
+            <div class="flex items-center gap-1.5">
+              <button onclick="openCatalogModal('${item.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white">
+                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="deleteCatalogItem('${item.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function openCatalogModal(itemId = null) {
+      const modal = document.getElementById('catalog-modal');
+      if (itemId) {
+        const item = appState.catalog.find(c => c.id === itemId);
+        document.getElementById('cat-modal-title').textContent = 'Modifier la prestation';
+        document.getElementById('cat-edit-id').value = item.id;
+        document.getElementById('cat-title').value = item.title;
+        document.getElementById('cat-desc').value = item.description || '';
+        document.getElementById('cat-unit').value = item.unit;
+        document.getElementById('cat-price').value = item.unitPrice;
+        document.getElementById('cat-vat').value = item.vatRate;
+      } else {
+        document.getElementById('cat-modal-title').textContent = 'Nouvelle prestation';
+        document.getElementById('cat-edit-id').value = '';
+        document.getElementById('cat-title').value = '';
+        document.getElementById('cat-desc').value = '';
+        document.getElementById('cat-unit').value = 'jour';
+        document.getElementById('cat-price').value = '';
+        document.getElementById('cat-vat').value = '20';
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeCatalogModal() {
+      document.getElementById('catalog-modal').classList.add('hidden');
+    }
+
+    function saveCatalogItem() {
+      const id = document.getElementById('cat-edit-id').value;
+      const title = document.getElementById('cat-title').value.trim();
+      if (!title) {
+        showToast('Veuillez saisir une désignation', 'info');
+        return;
+      }
+      const data = {
+        id: id || 'cat_' + Date.now(),
+        title,
+        description: document.getElementById('cat-desc').value.trim(),
+        unit: document.getElementById('cat-unit').value,
+        unitPrice: parseFloat(document.getElementById('cat-price').value) || 0,
+        vatRate: parseFloat(document.getElementById('cat-vat').value) || 0
+      };
+
+      if (id) {
+        const idx = appState.catalog.findIndex(c => c.id === id);
+        if (idx !== -1) appState.catalog[idx] = data;
+      } else {
+        appState.catalog.unshift(data);
+      }
+
+      persistState();
+      closeCatalogModal();
+      renderCatalog();
+      showToast('Prestation enregistrée dans le catalogue', 'success');
+    }
+
+    function deleteCatalogItem(id) {
+      appState.catalog = appState.catalog.filter(c => c.id !== id);
+      persistState();
+      renderCatalog();
+      showToast('Prestation supprimée', 'info');
+    }
+
+    // --- CLIENTS VIEW & MODAL ---
+    function renderClients() {
+      const grid = document.getElementById('clients-grid');
+      grid.innerHTML = appState.clients.map(c => `
+        <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between glass-card-hover space-y-4">
+          <div class="space-y-2">
+            <div class="flex items-start justify-between">
+              <div class="w-10 h-10 rounded-xl bg-[#CCFF00]/15 text-[#CCFF00] font-bold flex items-center justify-center">
+                ${escapeHtml(c.name.slice(0, 2).toUpperCase())}
+              </div>
+              <div class="flex items-center gap-1">
+                <button onclick="openClientModal('${c.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white">
+                  <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="deleteClient('${c.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+            <h3 class="font-bold text-base text-white pt-1">${escapeHtml(c.name)}</h3>
+            ${c.contact ? `<p class="text-xs text-slate-300 flex items-center gap-1.5"><i data-lucide="user" class="w-3.5 h-3.5 text-slate-400"></i> ${escapeHtml(c.contact)}</p>` : ''}
+            ${c.email ? `<p class="text-xs text-slate-400 flex items-center gap-1.5"><i data-lucide="mail" class="w-3.5 h-3.5 text-slate-400"></i> ${escapeHtml(c.email)}</p>` : ''}
+            ${c.address ? `<p class="text-xs text-slate-400 flex items-center gap-1.5"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400"></i> ${escapeHtml(c.address)}</p>` : ''}
+          </div>
+          <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+            <span class="font-mono-num text-slate-400">${c.siret ? `SIRET : ${escapeHtml(c.siret)}` : 'Particulier / Sans SIRET'}</span>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function openClientModal(clientId = null) {
+      const modal = document.getElementById('client-modal');
+      if (clientId) {
+        const c = appState.clients.find(item => item.id === clientId);
+        document.getElementById('cli-modal-title').textContent = 'Modifier le client';
+        document.getElementById('cli-edit-id').value = c.id;
+        document.getElementById('cli-name').value = c.name;
+        document.getElementById('cli-contact').value = c.contact || '';
+        document.getElementById('cli-siret').value = c.siret || '';
+        document.getElementById('cli-email').value = c.email || '';
+        document.getElementById('cli-address').value = c.address || '';
+      } else {
+        document.getElementById('cli-modal-title').textContent = 'Nouveau client';
+        document.getElementById('cli-edit-id').value = '';
+        document.getElementById('cli-name').value = '';
+        document.getElementById('cli-contact').value = '';
+        document.getElementById('cli-siret').value = '';
+        document.getElementById('cli-email').value = '';
+        document.getElementById('cli-address').value = '';
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeClientModal() {
+      document.getElementById('client-modal').classList.add('hidden');
+    }
+
+    function saveClientModal() {
+      const id = document.getElementById('cli-edit-id').value;
+      const name = document.getElementById('cli-name').value.trim();
+      if (!name) {
+        showToast('La raison sociale ou le nom est obligatoire', 'info');
+        return;
+      }
+      const data = {
+        id: id || 'cli_' + Date.now(),
+        name,
+        contact: document.getElementById('cli-contact').value.trim(),
+        siret: document.getElementById('cli-siret').value.trim(),
+        email: document.getElementById('cli-email').value.trim(),
+        address: document.getElementById('cli-address').value.trim()
+      };
+
+      if (id) {
+        const idx = appState.clients.findIndex(c => c.id === id);
+        if (idx !== -1) appState.clients[idx] = data;
+      } else {
+        appState.clients.unshift(data);
+      }
+
+      persistState();
+      closeClientModal();
+      renderClients();
+      showToast('Fiche client enregistrée', 'success');
+    }
+
+    function deleteClient(id) {
+      appState.clients = appState.clients.filter(c => c.id !== id);
+      persistState();
+      renderClients();
+      showToast('Client supprimé', 'info');
+    }
+
+    // --- SETTINGS VIEW ---
+    function renderSettings() {
+      const active = getActiveProfile();
+
+      // Profile Switch Cards
+      document.getElementById('profile-cards-selector').innerHTML = appState.profiles.map(p => {
+        const isSelected = p.id === active.id;
+        return `
+          <div onclick="switchCompanyProfile('${p.id}')" class="cursor-pointer rounded-2xl p-5 transition-all border ${
+            isSelected
+              ? 'bg-[#CCFF00]/10 border-[#CCFF00] shadow-[0_0_25px_rgba(204,255,0,0.12)]'
+              : 'glass-panel border-white/10 hover:border-white/25'
+          }">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-mono-num font-bold px-2.5 py-0.5 rounded ${
+                isSelected ? 'bg-[#CCFF00] text-[#050B14]' : 'bg-white/10 text-slate-300'
+              }">${escapeHtml(p.badge)}</span>
+              ${isSelected ? `<i data-lucide="check-circle-2" class="w-5 h-5 text-[#CCFF00]"></i>` : ''}
+            </div>
+            <h3 class="text-lg font-extrabold text-white mt-3">${escapeHtml(p.name)}</h3>
+            <p class="text-xs text-slate-400 mt-0.5">${escapeHtml(p.legalForm)} • SIRET ${escapeHtml(p.siret)}</p>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('set-vatExempt').checked = active.vatExempt;
+      document.getElementById('set-vatNumber-group').classList.toggle('opacity-40', active.vatExempt);
+
+      document.getElementById('set-name').value = active.name || '';
+      document.getElementById('set-legalForm').value = active.legalForm || '';
+      document.getElementById('set-siret').value = active.siret || '';
+      document.getElementById('set-vatNumber').value = active.vatNumber || '';
+      document.getElementById('set-rcs').value = active.rcs || '';
+      document.getElementById('set-ape').value = active.ape || '';
+      document.getElementById('set-email').value = active.email || '';
+      document.getElementById('set-phone').value = active.phone || '';
+      document.getElementById('set-address').value = active.address || '';
+      document.getElementById('set-iban').value = active.iban || '';
+      document.getElementById('set-bic').value = active.bic || '';
+      document.getElementById('set-legalFooter').value = active.legalFooter || '';
+
+      lucide.createIcons();
+    }
+
+    function toggleVatExemptSetting(isExempt) {
+      const active = getActiveProfile();
+      active.vatExempt = isExempt;
+      if (isExempt) {
+        active.badge = 'Auto-Entrepreneur (Art. 293 B)';
+        if (!active.legalFooter.includes('293 B')) {
+          active.legalFooter = 'TVA non applicable, art. 293 B du CGI. Dispensé d\'immatriculation au registre du commerce et des sociétés (RCS) et au répertoire des métiers (RM).';
+        }
+      } else {
+        active.badge = 'Société / PME (TVA Multi-taux)';
+      }
+      persistState();
+      renderHeaderProfileSelect();
+      renderSettings();
+      showToast(isExempt ? 'Mode Auto-entrepreneur (Art. 293 B) activé' : 'Mode Société avec TVA multi-taux activé', 'success');
+    }
+
+    function saveCompanySettings() {
+      const active = getActiveProfile();
+      active.name = document.getElementById('set-name').value.trim();
+      active.legalForm = document.getElementById('set-legalForm').value.trim();
+      active.siret = document.getElementById('set-siret').value.trim();
+      active.vatNumber = document.getElementById('set-vatNumber').value.trim();
+      active.rcs = document.getElementById('set-rcs').value.trim();
+      active.ape = document.getElementById('set-ape').value.trim();
+      active.email = document.getElementById('set-email').value.trim();
+      active.phone = document.getElementById('set-phone').value.trim();
+      active.address = document.getElementById('set-address').value.trim();
+      active.iban = document.getElementById('set-iban').value.trim();
+      active.bic = document.getElementById('set-bic').value.trim();
+      active.legalFooter = document.getElementById('set-legalFooter').value.trim();
+
+      persistState();
+      renderHeaderProfileSelect();
+      renderSettings();
+      showToast('Paramètres entreprise sauvegardés', 'success');
+    }
+
+    // --- SECURITY / ESCAPING ---
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str);
+    }
+
+    // --- INITIALIZATION ---
+    function initApp() {
+      renderHeaderProfileSelect();
+      navigateTo(appState.activeView || 'dashboard');
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
