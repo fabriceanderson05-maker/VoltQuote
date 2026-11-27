@@ -1922,8 +1922,10 @@
             </div>
 
             <div class="text-right">
-              <div class="inline-block px-3 py-1 rounded bg-slate-900 text-[#CCFF00] font-extrabold text-xs uppercase tracking-widest mb-2">
-                ${isInvoice ? 'FACTURE' : 'DEVIS'}
+              <div style="display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 14px; background-color: #0F172A; color: #CCFF00; border-radius: 4px; margin-bottom: 8px;">
+                <span style="display: block; font-weight: 800; font-size: 12px; line-height: 1; letter-spacing: 0.1em; text-transform: uppercase; transform: translateY(-0.5px);">
+                  ${isInvoice ? 'FACTURE' : 'DEVIS'}
+                </span>
               </div>
               <div class="font-mono-num text-xl font-extrabold text-slate-900">${escapeHtml(q.number)}</div>
               <div class="text-xs text-slate-600 mt-1 space-y-0.5 font-mono-num">
