@@ -131,7 +131,8 @@
         size: A4 portrait;
         margin: 0;
       }
-      body {
+      html, body {
+        width: 100% !important;
         background: #FFFFFF !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -143,6 +144,7 @@
         display: block !important;
         position: static !important;
         width: 100% !important;
+        max-width: none !important;
         height: auto !important;
         overflow: visible !important;
         padding: 0 !important;
@@ -150,8 +152,10 @@
         background: #FFFFFF !important;
       }
       .a4-sheet {
-        width: 210mm !important;
+        width: 100% !important;
+        max-width: none !important;
         min-height: 297mm !important;
+        padding: 12mm 14mm !important;
         box-shadow: none !important;
         transform: none !important;
         margin: 0 !important;
