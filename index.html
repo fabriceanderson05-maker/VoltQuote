@@ -16,6 +16,10 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
+  <!-- html2canvas & jsPDF pour export PDF haute définition direct -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -387,8 +391,8 @@
               <span>Enregistrer</span>
             </button>
 
-            <button onclick="exportToPDF()" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-[#CCFF00] hover:bg-[#d8ff33] text-[#050B14] shadow-[0_0_20px_rgba(204,255,0,0.3)] flex items-center gap-1.5 transition-all active:scale-95">
-              <i data-lucide="printer" class="w-4 h-4 stroke-[2.5]"></i>
+            <button id="btn-export-pdf" onclick="exportToPDF()" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold bg-[#CCFF00] hover:bg-[#d8ff33] text-[#050B14] shadow-[0_0_20px_rgba(204,255,0,0.3)] flex items-center gap-1.5 transition-all active:scale-95">
+              <i data-lucide="download" class="w-4 h-4 stroke-[2.5]"></i>
               <span>Générer PDF</span>
             </button>
           </div>
@@ -1443,8 +1447,11 @@
             </td>
             <td class="py-3.5 px-4 text-right whitespace-nowrap">
               <div class="inline-flex items-center gap-1">
-                <button onclick="openQuoteInEditor('${q.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-[#CCFF00] text-slate-300 hover:text-[#050B14] transition-all" title="Éditer & Aperçu PDF">
+                <button onclick="openQuoteInEditor('${q.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-[#CCFF00] text-slate-300 hover:text-[#050B14] transition-all" title="Éditer & Aperçu">
                   <i data-lucide="pen-square" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="downloadQuotePDFById('${q.id}')" class="p-2 rounded-lg bg-[#CCFF00]/15 hover:bg-[#CCFF00] text-[#CCFF00] hover:text-[#050B14] transition-all" title="Télécharger le PDF haute définition">
+                  <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
                 </button>
                 <button onclick="duplicateQuoteById('${q.id}')" class="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all" title="Dupliquer en 1 clic">
                   <i data-lucide="copy" class="w-3.5 h-3.5"></i>
@@ -2140,12 +2147,117 @@
       }
     }
 
-    function exportToPDF() {
+    // --- HIGH-DEFINITION DIRECT PDF GENERATION (html2canvas + jsPDF) ---
+    async function generateDirectPDF(quoteObj) {
+      const q = quoteObj || getCurrentQuote();
+      if (!q) return;
+
+      const btn = document.getElementById('btn-export-pdf');
+      const originalBtnHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-75', 'cursor-wait');
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin stroke-[2.5]"></i><span>Génération...</span>`;
+        lucide.createIcons();
+      }
+
+      showToast('Génération du PDF haute définition en cours...', 'info');
+
+      // S'assurer que le rendu HTML correspond bien au document ciblé
+      const previousId = appState.currentQuoteId;
+      appState.currentQuoteId = q.id;
       renderA4Preview();
-      showToast('Préparation du PDF haute définition...', 'success');
-      setTimeout(() => {
+      appState.currentQuoteId = previousId;
+
+      // Créer un conteneur hors-écran à l'échelle exacte A4 (794px x 1123px à 96 DPI) sans zoom CSS
+      const stagingHost = document.createElement('div');
+      stagingHost.style.position = 'fixed';
+      stagingHost.style.left = '-10000px';
+      stagingHost.style.top = '0';
+      stagingHost.style.width = '794px';
+      stagingHost.style.height = '1123px';
+      stagingHost.style.background = '#FFFFFF';
+      stagingHost.style.zIndex = '-1';
+      stagingHost.style.overflow = 'hidden';
+
+      const sourceContent = document.getElementById('a4-document-render').innerHTML;
+      const sheetClone = document.createElement('div');
+      sheetClone.style.width = '794px';
+      sheetClone.style.height = '1123px';
+      sheetClone.style.minHeight = '1123px';
+      sheetClone.style.padding = '44px 48px';
+      sheetClone.style.background = '#FFFFFF';
+      sheetClone.style.color = '#0F172A';
+      sheetClone.style.display = 'flex';
+      sheetClone.style.flexDirection = 'column';
+      sheetClone.style.justifyContent = 'space-between';
+      sheetClone.style.boxSizing = 'border-box';
+      sheetClone.style.fontFamily = '"Plus Jakarta Sans", Arial, sans-serif';
+      sheetClone.innerHTML = sourceContent;
+
+      stagingHost.appendChild(sheetClone);
+      document.body.appendChild(stagingHost);
+
+      try {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+        await new Promise(resolve => setTimeout(resolve, 120));
+
+        const canvas = await html2canvas(sheetClone, {
+          scale: 3, // Haute résolution (~288 DPI) pour une netteté parfaite sur les i, l et chiffres
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#FFFFFF',
+          width: 794,
+          height: 1123,
+          windowWidth: 794,
+          windowHeight: 1123,
+          logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+          compress: true
+        });
+
+        // Remplit exactement la page A4 (210mm x 297mm)
+        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+
+        const docPrefix = q.type === 'Facture' ? 'Facture' : 'Devis';
+        const safeNum = (q.number || 'document').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const fileName = `${docPrefix}-${safeNum}.pdf`;
+
+        pdf.save(fileName);
+        showToast(`PDF téléchargé : ${fileName}`, 'success');
+      } catch (err) {
+        console.error('Erreur génération PDF:', err);
+        showToast('Erreur lors de la génération PDF, ouverture de l\'impression...', 'info');
         window.print();
-      }, 250);
+      } finally {
+        stagingHost.remove();
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-75', 'cursor-wait');
+          btn.innerHTML = originalBtnHtml;
+          lucide.createIcons();
+        }
+      }
+    }
+
+    function exportToPDF() {
+      generateDirectPDF(getCurrentQuote());
+    }
+
+    function downloadQuotePDFById(quoteId) {
+      const target = appState.quotes.find(q => q.id === quoteId);
+      if (target) {
+        generateDirectPDF(target);
+      }
     }
 
     // --- CATALOG VIEW & MODAL ---
