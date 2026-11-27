@@ -152,14 +152,19 @@
         background: #FFFFFF !important;
       }
       .a4-sheet {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
         width: 100% !important;
         max-width: none !important;
+        height: 297mm !important;
         min-height: 297mm !important;
         padding: 12mm 14mm !important;
         box-shadow: none !important;
         transform: none !important;
         margin: 0 !important;
         border-radius: 0 !important;
+        box-sizing: border-box !important;
       }
     }
   </style>
@@ -2058,7 +2063,7 @@
         </div>
 
         <!-- BOTTOM SECTION: SIGNATURE & LEGAL FOOTER -->
-        <div class="mt-8 pt-4 border-t border-slate-200">
+        <div class="mt-auto pt-4 border-t border-slate-200">
           ${!isInvoice ? `
             <div class="grid grid-cols-2 gap-6 mb-5">
               <div class="text-[10px] text-slate-500">
