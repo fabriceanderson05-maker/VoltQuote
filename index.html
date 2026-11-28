@@ -1922,10 +1922,8 @@
             </div>
 
             <div class="text-right">
-              <div class="pdf-dark-box" style="display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 14px; background-color: #0F172A; color: #CCFF00; border-radius: 4px; margin-bottom: 8px;">
-                <span class="pdf-center-text" style="display: inline-block; font-weight: 800; font-size: 12px; line-height: 1; letter-spacing: 0.1em; text-transform: uppercase;">
-                  ${isInvoice ? 'FACTURE' : 'DEVIS'}
-                </span>
+              <div class="inline-block px-3 py-1 rounded bg-slate-900 text-[#CCFF00] font-extrabold text-xs uppercase tracking-widest mb-2">
+                ${isInvoice ? 'FACTURE' : 'DEVIS'}
               </div>
               <div class="font-mono-num text-xl font-extrabold text-slate-900">${escapeHtml(q.number)}</div>
               <div class="text-xs text-slate-600 mt-1 space-y-0.5 font-mono-num">
@@ -1960,28 +1958,28 @@
 
           <!-- Subject Banner -->
           ${q.subject ? `
-            <div class="pdf-dark-box mt-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg flex items-center justify-between">
-              <span class="pdf-center-text text-[11px] uppercase tracking-wider text-slate-400 font-semibold leading-none">Objet :</span>
-              <span class="pdf-center-text text-xs font-bold text-white flex-1 ml-3 leading-none">${escapeHtml(q.subject)}</span>
+            <div class="mt-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg flex items-center justify-between">
+              <span class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Objet :</span>
+              <span class="text-xs font-bold text-white flex-1 ml-3">${escapeHtml(q.subject)}</span>
             </div>
           ` : ''}
 
           <!-- LINE ITEMS TABLE -->
           <div class="mt-6">
-            <table class="w-full text-left border-collapse table-fixed">
+            <table class="w-full text-left border-collapse">
               <thead>
-                <tr class="pdf-dark-box bg-slate-900 text-white text-[10px] uppercase tracking-wider font-bold">
-                  <th class="py-2.5 pl-3 pr-2 rounded-l-md ${profile.vatExempt ? 'w-[54%]' : 'w-[46%]'}"><span class="pdf-center-text inline-block leading-none">Désignation & Description</span></th>
-                  <th class="py-2.5 px-2 text-right w-[14%]"><span class="pdf-center-text inline-block leading-none">Qté</span></th>
-                  <th class="py-2.5 px-2 text-right w-[16%]"><span class="pdf-center-text inline-block leading-none">P.U. ${profile.vatExempt ? '' : 'HT'}</span></th>
-                  ${!profile.vatExempt ? `<th class="py-2.5 px-2 text-right w-[8%]"><span class="pdf-center-text inline-block leading-none">TVA</span></th>` : ''}
-                  <th class="py-2.5 pl-2 pr-3 text-right rounded-r-md w-[16%]"><span class="pdf-center-text inline-block leading-none">Total ${profile.vatExempt ? 'Net' : 'HT'}</span></th>
+                <tr class="border-b-2 border-slate-900 text-[10px] uppercase tracking-wider text-slate-600 font-bold">
+                  <th class="py-2.5 pr-3">Désignation & Description</th>
+                  <th class="py-2.5 px-2 text-right">Qté</th>
+                  <th class="py-2.5 px-2 text-right">P.U. ${profile.vatExempt ? '' : 'HT'}</th>
+                  ${!profile.vatExempt ? `<th class="py-2.5 px-2 text-right">TVA</th>` : ''}
+                  <th class="py-2.5 pl-2 text-right">Total ${profile.vatExempt ? 'Net' : 'HT'}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-200 text-xs">
                 ${calc.lineDetails.map(line => `
                   <tr>
-                    <td class="py-3 pl-3 pr-2 align-top">
+                    <td class="py-3 pr-3 align-top">
                       <div class="font-bold text-slate-900">${escapeHtml(line.title || 'Prestation')}</div>
                       ${line.description ? `<div class="text-[11px] text-slate-600 mt-0.5 leading-relaxed whitespace-pre-line">${escapeHtml(line.description)}</div>` : ''}
                       ${line.lineDiscountAmount > 0 ? `<div class="text-[10px] font-mono-num text-emerald-700 font-semibold mt-0.5">Remise ligne appliquée : -${formatCurrency(line.lineDiscountAmount)}</div>` : ''}
@@ -1997,7 +1995,7 @@
                         ${line.vatRate}%
                       </td>
                     ` : ''}
-                    <td class="py-3 pl-2 pr-3 text-right font-mono-num font-bold align-top whitespace-nowrap text-slate-900">
+                    <td class="py-3 pl-2 text-right font-mono-num font-bold align-top whitespace-nowrap text-slate-900">
                       ${formatCurrency(line.netHT)}
                     </td>
                   </tr>
@@ -2012,10 +2010,9 @@
             <div class="col-span-6 space-y-3 text-[11px] text-slate-600">
               ${q.paymentTerms ? `
                 <div>
-              <div class="pdf-dark-box flex justify-between items-center bg-slate-900 text-white px-3.5 py-2.5 rounded-lg mt-2">
-                <span class="pdf-center-text font-bold uppercase tracking-wider text-xs leading-none">${profile.vatExempt ? 'Net à payer' : 'Total TTC'}</span>
-                <span class="pdf-center-text font-mono-num font-extrabold text-base text-[#CCFF00] leading-none">${formatCurrency(calc.totalTTC)}</span>
-              </div>
+                  <div class="font-bold text-slate-800 uppercase text-[10px] tracking-wider">Conditions de règlement</div>
+                  <p class="mt-0.5">${escapeHtml(q.paymentTerms)}</p>
+                </div>
               ` : ''}
               ${q.notes ? `
                 <div>
@@ -2185,7 +2182,6 @@
 
       const sourceContent = document.getElementById('a4-document-render').innerHTML;
       const sheetClone = document.createElement('div');
-      sheetClone.id = 'pdf-capture-root';
       sheetClone.style.width = '794px';
       sheetClone.style.height = '1123px';
       sheetClone.style.minHeight = '1123px';
@@ -2217,26 +2213,7 @@
           height: 1123,
           windowWidth: 794,
           windowHeight: 1123,
-          logging: false,
-          onclone: function(clonedDoc) {
-            const captureRoot = clonedDoc.getElementById('pdf-capture-root');
-            if (!captureRoot) return;
-
-            // Correction ciblée du décalage de ligne de base de html2canvas dans les cadres foncés/bleus
-            captureRoot.querySelectorAll('.pdf-center-text').forEach(el => {
-              el.style.display = 'inline-block';
-              el.style.lineHeight = '1';
-              el.style.verticalAlign = 'middle';
-              el.style.transform = 'translateY(-4px)';
-            });
-
-            // Garantir la disposition tabulaire stricte des colonnes lors de la capture
-            captureRoot.querySelectorAll('table').forEach(tbl => {
-              tbl.style.display = 'table';
-              tbl.style.width = '100%';
-              tbl.style.borderCollapse = 'collapse';
-            });
-          }
+          logging: false
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
