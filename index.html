@@ -1896,211 +1896,280 @@
         .join('')
         .toUpperCase();
 
+      // Génère quelques lignes d'air fines façon Zervant pour aérer le tableau lorsque peu de lignes sont saisies
+      const fillerRowsCount = Math.max(0, 3 - calc.lineDetails.length);
+      const fillerColsCount = profile.vatExempt ? 5 : 7;
+      const fillerRowsHtml = Array.from({ length: fillerRowsCount }).map(() => `
+        <tr class="border-b border-slate-100">
+          <td colspan="${fillerColsCount}" class="py-3.5">&nbsp;</td>
+        </tr>
+      `).join('');
+
       const html = `
-        <!-- TOP SECTION: HEADER & PARTIES -->
-        <div>
-          <!-- Header Row -->
-          <div class="flex justify-between items-start border-b-2 border-slate-900 pb-6">
-            <div class="flex items-start gap-3.5">
+        <!-- TOP SECTION: MINIMALIST HEADER, PARTIES & LINE ITEMS -->
+        <div class="text-slate-800">
+          <!-- 1. Top Header Row: Left Issuer + Square Logo / Right Typographic Title & Metadata Table -->
+          <div class="flex justify-between items-start pb-6 border-b border-slate-300">
+            <div class="flex items-start gap-4 max-w-[56%]">
               ${profile.logoDataUrl ? `
-                <div class="w-16 h-16 rounded-none overflow-hidden shrink-0 bg-white flex items-center justify-center">
+                <div class="w-16 h-16 rounded-none overflow-hidden shrink-0 bg-white flex items-center justify-center" style="border-radius: 0px;">
                   <img src="${profile.logoDataUrl}" alt="Logo ${escapeHtml(profile.name)}" class="w-full h-full object-contain rounded-none" style="border-radius: 0px;" />
                 </div>
               ` : `
-                <div class="w-12 h-12 rounded-xl bg-slate-900 text-[#CCFF00] font-extrabold text-lg flex items-center justify-center shrink-0 tracking-tight">
+                <div class="w-12 h-12 rounded-none border border-slate-900 text-slate-900 font-extrabold text-base flex items-center justify-center shrink-0 tracking-tight" style="border-radius: 0px;">
                   ${initials || 'VQ'}
                 </div>
               `}
-              <div>
-                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">${escapeHtml(profile.name)}</h1>
-                <p class="text-xs font-medium text-slate-600">${escapeHtml(profile.legalForm)}</p>
-                <p class="text-xs text-slate-500 mt-1">${escapeHtml(profile.address)}</p>
-                <p class="text-xs text-slate-500 font-mono-num">
-                  ${profile.email ? escapeHtml(profile.email) : ''} ${profile.phone ? `• ${escapeHtml(profile.phone)}` : ''}
-                </p>
+              <div class="text-xs leading-relaxed">
+                <h1 class="text-lg font-extrabold text-slate-900 tracking-tight leading-snug">${escapeHtml(profile.name)}</h1>
+                ${profile.legalForm ? `<div class="text-[11px] font-medium text-slate-600">${escapeHtml(profile.legalForm)}</div>` : ''}
+                ${profile.address ? `<div class="text-[11px] text-slate-600 mt-1">${escapeHtml(profile.address)}</div>` : ''}
+                <div class="text-[11px] text-slate-600 font-mono-num">
+                  ${profile.email ? escapeHtml(profile.email) : ''}${profile.email && profile.phone ? ' • ' : ''}${profile.phone ? escapeHtml(profile.phone) : ''}
+                </div>
+                <div class="text-[10px] text-slate-500 font-mono-num mt-1">
+                  ${profile.siret ? `SIRET : ${escapeHtml(profile.siret)}` : ''}${profile.ape ? ` • APE : ${escapeHtml(profile.ape)}` : ''}
+                  ${!profile.vatExempt && profile.vatNumber ? `<br/>TVA Intra. : ${escapeHtml(profile.vatNumber)}` : ''}
+                </div>
               </div>
             </div>
 
-            <div class="text-right">
-              <div class="inline-block px-3 py-1 rounded bg-slate-900 text-[#CCFF00] font-extrabold text-xs uppercase tracking-widest mb-2">
+            <div class="text-right min-w-[235px]">
+              <div class="text-2xl font-extrabold text-slate-900 tracking-wide uppercase mb-3">
                 ${isInvoice ? 'FACTURE' : 'DEVIS'}
               </div>
-              <div class="font-mono-num text-xl font-extrabold text-slate-900">${escapeHtml(q.number)}</div>
-              <div class="text-xs text-slate-600 mt-1 space-y-0.5 font-mono-num">
-                <div>Émis le : <strong class="text-slate-900">${formatDateFR(q.date)}</strong></div>
-                <div>${isInvoice ? 'Échéance' : 'Valable jusqu\'au'} : <strong class="text-slate-900">${formatDateFR(q.validUntil)}</strong></div>
-              </div>
+              <table class="w-full text-[11px] text-slate-700 border-collapse">
+                <tbody>
+                  <tr>
+                    <td class="py-0.5 pr-3 text-left text-slate-500 font-medium">${isInvoice ? 'Date de facture :' : 'Date du devis :'}</td>
+                    <td class="py-0.5 text-right font-mono-num font-semibold text-slate-900">${formatDateFR(q.date)}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-0.5 pr-3 text-left text-slate-500 font-medium">${isInvoice ? 'Référence facture :' : 'Référence du devis :'}</td>
+                    <td class="py-0.5 text-right font-mono-num font-bold text-slate-900">${escapeHtml(q.number)}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-0.5 pr-3 text-left text-slate-500 font-medium">${isInvoice ? 'Date d\'échéance :' : 'Date de validité :'}</td>
+                    <td class="py-0.5 text-right font-mono-num font-semibold text-slate-900">${formatDateFR(q.validUntil)}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <!-- Sender Legal IDs & Recipient Box -->
-          <div class="grid grid-cols-12 gap-6 mt-6">
-            <div class="col-span-6 text-[11px] text-slate-600 space-y-1">
-              <div class="font-bold uppercase tracking-wider text-slate-400 text-[10px]">Informations Émetteur</div>
-              <div class="font-mono-num">SIRET : <strong class="text-slate-800">${escapeHtml(profile.siret || '—')}</strong></div>
-              ${profile.rcs ? `<div>${escapeHtml(profile.rcs)}</div>` : ''}
-              ${profile.ape ? `<div class="font-mono-num">Code APE/NAF : ${escapeHtml(profile.ape)}</div>` : ''}
-              ${!profile.vatExempt && profile.vatNumber ? `<div class="font-mono-num">N° TVA Intra. : <strong class="text-slate-800">${escapeHtml(profile.vatNumber)}</strong></div>` : ''}
-              ${profile.vatExempt ? `<div class="inline-block mt-1 px-2 py-0.5 bg-slate-100 text-slate-800 font-semibold rounded text-[10px]">TVA non applicable, art. 293 B du CGI</div>` : ''}
-            </div>
-
-            <div class="col-span-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
-              <div class="font-bold uppercase tracking-wider text-slate-400 text-[10px] mb-1">Destinataire / Client</div>
+          <!-- 2. Two-Column Section: Client & Informations Additionnelles / Objet -->
+          <div class="grid grid-cols-12 gap-8 py-6 border-b border-slate-300 text-xs">
+            <div class="col-span-6 space-y-1">
+              <div class="font-bold text-slate-900 text-[11px] uppercase tracking-wider mb-1.5">Client :</div>
               ${client ? `
                 <div class="font-bold text-sm text-slate-900">${escapeHtml(client.name)}</div>
-                ${client.contact ? `<div class="text-xs text-slate-700">À l'attention de ${escapeHtml(client.contact)}</div>` : ''}
-                <div class="text-xs text-slate-600 mt-1">${escapeHtml(client.address || '')}</div>
-                ${client.siret ? `<div class="text-[11px] font-mono-num text-slate-500 mt-1">SIRET : ${escapeHtml(client.siret)}</div>` : ''}
+                ${client.contact ? `<div class="text-slate-700">À l'attention de ${escapeHtml(client.contact)}</div>` : ''}
+                ${client.address ? `<div class="text-slate-600 leading-relaxed">${escapeHtml(client.address)}</div>` : ''}
+                ${client.siret ? `<div class="text-[11px] font-mono-num text-slate-500 pt-1">SIRET : ${escapeHtml(client.siret)}</div>` : ''}
                 ${client.email ? `<div class="text-[11px] text-slate-500">${escapeHtml(client.email)}</div>` : ''}
-              ` : `<div class="text-xs text-slate-400 italic">Aucun client sélectionné</div>`}
+              ` : `<div class="text-slate-400 italic">Aucun client sélectionné</div>`}
+            </div>
+
+            <div class="col-span-6 space-y-2.5">
+              <div>
+                <div class="font-bold text-slate-900 text-[11px] uppercase tracking-wider mb-1">Informations additionnelles :</div>
+                ${q.subject ? `
+                  <div class="text-slate-800"><span class="font-semibold text-slate-900">Objet :</span> ${escapeHtml(q.subject)}</div>
+                ` : ''}
+                ${q.paymentTerms ? `
+                  <div class="text-[11px] text-slate-600 mt-1 leading-relaxed"><span class="font-semibold text-slate-800">Règlement :</span> ${escapeHtml(q.paymentTerms)}</div>
+                ` : ''}
+                ${q.notes ? `
+                  <div class="text-[11px] text-slate-600 mt-1 leading-relaxed whitespace-pre-line">${escapeHtml(q.notes)}</div>
+                ` : ''}
+              </div>
+              ${profile.vatExempt ? `
+                <div class="text-[11px] font-medium text-slate-700 pt-0.5">
+                  TVA non applicable, art. 293 B du CGI.
+                </div>
+              ` : ''}
             </div>
           </div>
 
-          <!-- Subject Banner -->
-          ${q.subject ? `
-            <div class="mt-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg flex items-center justify-between">
-              <span class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Objet :</span>
-              <span class="text-xs font-bold text-white flex-1 ml-3">${escapeHtml(q.subject)}</span>
-            </div>
-          ` : ''}
-
-          <!-- LINE ITEMS TABLE -->
+          <!-- 3. Clean Minimalist Line-Item Table (Thin Horizontal Rules Only, Zero Dark Boxes) -->
           <div class="mt-6">
             <table class="w-full text-left border-collapse">
               <thead>
-                <tr class="border-b-2 border-slate-900 text-[10px] uppercase tracking-wider text-slate-600 font-bold">
-                  <th class="py-2.5 pr-3">Désignation & Description</th>
-                  <th class="py-2.5 px-2 text-right">Qté</th>
-                  <th class="py-2.5 px-2 text-right">P.U. ${profile.vatExempt ? '' : 'HT'}</th>
-                  ${!profile.vatExempt ? `<th class="py-2.5 px-2 text-right">TVA</th>` : ''}
-                  <th class="py-2.5 pl-2 text-right">Total ${profile.vatExempt ? 'Net' : 'HT'}</th>
+                <tr class="border-t border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-900 font-bold">
+                  <th class="py-2.5 pr-3">Description</th>
+                  <th class="py-2.5 px-2 text-right">Quantité</th>
+                  <th class="py-2.5 px-2 text-left">Unité</th>
+                  <th class="py-2.5 px-2 text-right">${profile.vatExempt ? 'Prix unitaire' : 'Prix unitaire HT'}</th>
+                  ${!profile.vatExempt ? `
+                    <th class="py-2.5 px-2 text-right">% TVA</th>
+                    <th class="py-2.5 px-2 text-right">Total TVA</th>
+                    <th class="py-2.5 pl-2 text-right">Total TTC</th>
+                  ` : `
+                    <th class="py-2.5 pl-2 text-right">Total Net</th>
+                  `}
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-200 text-xs">
-                ${calc.lineDetails.map(line => `
-                  <tr>
-                    <td class="py-3 pr-3 align-top">
-                      <div class="font-bold text-slate-900">${escapeHtml(line.title || 'Prestation')}</div>
-                      ${line.description ? `<div class="text-[11px] text-slate-600 mt-0.5 leading-relaxed whitespace-pre-line">${escapeHtml(line.description)}</div>` : ''}
-                      ${line.lineDiscountAmount > 0 ? `<div class="text-[10px] font-mono-num text-emerald-700 font-semibold mt-0.5">Remise ligne appliquée : -${formatCurrency(line.lineDiscountAmount)}</div>` : ''}
-                    </td>
-                    <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-800">
-                      ${line.qty} <span class="text-[10px] text-slate-500">${escapeHtml(line.unit)}</span>
-                    </td>
-                    <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-800">
-                      ${formatCurrency(line.unitPrice)}
-                    </td>
-                    ${!profile.vatExempt ? `
-                      <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-600">
-                        ${line.vatRate}%
+              <tbody class="text-xs">
+                ${calc.lineDetails.map(line => {
+                  const lineVatAmount = line.netHT * ((line.vatRate || 0) / 100);
+                  const lineTTC = line.netHT + lineVatAmount;
+                  return `
+                    <tr class="border-b border-slate-200">
+                      <td class="py-3 pr-3 align-top">
+                        <div class="font-bold text-slate-900">${escapeHtml(line.title || 'Prestation')}</div>
+                        ${line.description ? `<div class="text-[11px] text-slate-600 mt-0.5 leading-relaxed whitespace-pre-line">${escapeHtml(line.description)}</div>` : ''}
+                        ${line.lineDiscountAmount > 0 ? `<div class="text-[10px] font-mono-num text-slate-600 italic mt-0.5">Remise ligne appliquée : -${formatCurrency(line.lineDiscountAmount)}</div>` : ''}
                       </td>
-                    ` : ''}
-                    <td class="py-3 pl-2 text-right font-mono-num font-bold align-top whitespace-nowrap text-slate-900">
-                      ${formatCurrency(line.netHT)}
-                    </td>
-                  </tr>
-                `).join('')}
+                      <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-800">
+                        ${line.qty}
+                      </td>
+                      <td class="py-3 px-2 text-left align-top whitespace-nowrap text-slate-600 text-[11px]">
+                        ${escapeHtml(line.unit)}
+                      </td>
+                      <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-800">
+                        ${formatCurrency(line.unitPrice)}
+                      </td>
+                      ${!profile.vatExempt ? `
+                        <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-700">
+                          ${line.vatRate} %
+                        </td>
+                        <td class="py-3 px-2 text-right font-mono-num align-top whitespace-nowrap text-slate-700">
+                          ${formatCurrency(lineVatAmount)}
+                        </td>
+                        <td class="py-3 pl-2 text-right font-mono-num font-bold align-top whitespace-nowrap text-slate-900">
+                          ${formatCurrency(lineTTC)}
+                        </td>
+                      ` : `
+                        <td class="py-3 pl-2 text-right font-mono-num font-bold align-top whitespace-nowrap text-slate-900">
+                          ${formatCurrency(line.netHT)}
+                        </td>
+                      `}
+                    </tr>
+                  `;
+                }).join('')}
+                ${fillerRowsHtml}
               </tbody>
             </table>
           </div>
 
-          <!-- TOTALS & VAT BREAKDOWN -->
-          <div class="mt-6 grid grid-cols-12 gap-6 items-start">
-            <!-- Left: Payment terms & Bank details -->
-            <div class="col-span-6 space-y-3 text-[11px] text-slate-600">
-              ${q.paymentTerms ? `
-                <div>
-                  <div class="font-bold text-slate-800 uppercase text-[10px] tracking-wider">Conditions de règlement</div>
-                  <p class="mt-0.5">${escapeHtml(q.paymentTerms)}</p>
-                </div>
-              ` : ''}
-              ${q.notes ? `
-                <div>
-                  <div class="font-bold text-slate-800 uppercase text-[10px] tracking-wider">Notes</div>
-                  <p class="mt-0.5 whitespace-pre-line">${escapeHtml(q.notes)}</p>
-                </div>
-              ` : ''}
+          <!-- 4. Right-Aligned Summary Totals & Left Bank Info -->
+          <div class="mt-5 grid grid-cols-12 gap-8 items-start">
+            <div class="col-span-6 text-[11px] text-slate-600 space-y-2 pt-1">
               ${profile.iban ? `
-                <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 font-mono-num text-[10px]">
-                  <div class="font-sans font-bold text-slate-700 uppercase text-[9px] mb-0.5">Coordonnées Bancaires (Virement)</div>
-                  <div>IBAN : <strong class="text-slate-900">${escapeHtml(profile.iban)}</strong></div>
-                  ${profile.bic ? `<div>BIC : <strong class="text-slate-900">${escapeHtml(profile.bic)}</strong></div>` : ''}
+                <div>
+                  <div class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Coordonnées bancaires</div>
+                  <div class="font-mono-num text-[10px] text-slate-700 mt-0.5">IBAN : ${escapeHtml(profile.iban)}</div>
+                  ${profile.bic ? `<div class="font-mono-num text-[10px] text-slate-700">BIC : ${escapeHtml(profile.bic)}</div>` : ''}
+                </div>
+              ` : ''}
+              ${profile.vatExempt ? `
+                <div class="text-[10px] text-slate-500 italic">
+                  TVA non applicable, art. 293 B du CGI.
                 </div>
               ` : ''}
             </div>
 
-            <!-- Right: Financial Summary Box -->
-            <div class="col-span-6 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 text-xs">
-              <div class="flex justify-between text-slate-600">
-                <span>Sous-total ${profile.vatExempt ? 'Net' : 'HT'}</span>
-                <span class="font-mono-num font-semibold text-slate-900">${formatCurrency(calc.subtotalHT)}</span>
-              </div>
+            <div class="col-span-6">
+              <table class="w-full text-xs border-collapse">
+                <tbody>
+                  <tr>
+                    <td class="py-1.5 pr-4 text-right text-slate-600 font-medium">
+                      ${profile.vatExempt ? 'Sous-total Net' : 'Total HT'}
+                    </td>
+                    <td class="py-1.5 text-right font-mono-num font-semibold text-slate-900 whitespace-nowrap w-32">
+                      ${formatCurrency(calc.subtotalHT)}
+                    </td>
+                  </tr>
 
-              ${calc.globalDiscountAmount > 0 ? `
-                <div class="flex justify-between text-emerald-700 font-medium">
-                  <span>Remise globale ${q.globalDiscountType === 'percent' ? `(${q.globalDiscount}%)` : ''}</span>
-                  <span class="font-mono-num">- ${formatCurrency(calc.globalDiscountAmount)}</span>
-                </div>
-                <div class="flex justify-between text-slate-700 font-semibold border-t border-slate-200 pt-1.5">
-                  <span>Total ${profile.vatExempt ? 'Net' : 'HT'} après remise</span>
-                  <span class="font-mono-num">${formatCurrency(calc.totalHT)}</span>
-                </div>
-              ` : ''}
+                  ${calc.globalDiscountAmount > 0 ? `
+                    <tr>
+                      <td class="py-1.5 pr-4 text-right text-slate-600">
+                        Remise globale ${q.globalDiscountType === 'percent' ? `(${q.globalDiscount}%)` : ''}
+                      </td>
+                      <td class="py-1.5 text-right font-mono-num text-slate-800 whitespace-nowrap">
+                        - ${formatCurrency(calc.globalDiscountAmount)}
+                      </td>
+                    </tr>
+                    <tr class="border-t border-slate-200">
+                      <td class="py-1.5 pr-4 text-right text-slate-700 font-semibold">
+                        ${profile.vatExempt ? 'Total Net après remise' : 'Total HT après remise'}
+                      </td>
+                      <td class="py-1.5 text-right font-mono-num font-semibold text-slate-900 whitespace-nowrap">
+                        ${formatCurrency(calc.totalHT)}
+                      </td>
+                    </tr>
+                  ` : ''}
 
-              ${!profile.vatExempt ? `
-                ${calc.vatBreakdown.map(v => `
-                  <div class="flex justify-between text-slate-600 text-[11px]">
-                    <span>TVA ${v.rate}% <span class="text-slate-400">(base ${formatCurrency(v.base)})</span></span>
-                    <span class="font-mono-num">${formatCurrency(v.amount)}</span>
-                  </div>
-                `).join('')}
-                <div class="flex justify-between text-slate-700 font-semibold border-t border-slate-200 pt-1.5">
-                  <span>Total TVA</span>
-                  <span class="font-mono-num">${formatCurrency(calc.totalVAT)}</span>
-                </div>
-              ` : `
-                <div class="text-[10px] text-slate-500 italic pt-1">
-                  TVA non applicable, art. 293 B du CGI.
-                </div>
-              `}
+                  ${!profile.vatExempt ? `
+                    ${calc.vatBreakdown.map(v => `
+                      <tr>
+                        <td class="py-1 pr-4 text-right text-slate-500 text-[11px]">
+                          TVA ${v.rate} % (base ${formatCurrency(v.base)})
+                        </td>
+                        <td class="py-1 text-right font-mono-num text-slate-700 text-[11px] whitespace-nowrap">
+                          ${formatCurrency(v.amount)}
+                        </td>
+                      </tr>
+                    `).join('')}
+                    <tr class="border-t border-slate-200">
+                      <td class="py-1.5 pr-4 text-right text-slate-700 font-semibold">Total TVA</td>
+                      <td class="py-1.5 text-right font-mono-num font-semibold text-slate-900 whitespace-nowrap">
+                        ${formatCurrency(calc.totalVAT)}
+                      </td>
+                    </tr>
+                  ` : ''}
 
-              <div class="flex justify-between items-center bg-slate-900 text-white px-3.5 py-2.5 rounded-lg mt-2">
-                <span class="font-bold uppercase tracking-wider text-xs">${profile.vatExempt ? 'Net à payer' : 'Total TTC'}</span>
-                <span class="font-mono-num font-extrabold text-base text-[#CCFF00]">${formatCurrency(calc.totalTTC)}</span>
-              </div>
+                  <tr class="border-t border-slate-900" style="border-bottom: 3px double #0F172A;">
+                    <td class="py-2.5 pr-4 text-right font-extrabold uppercase tracking-wider text-slate-900 text-xs">
+                      ${profile.vatExempt ? 'NET À PAYER' : 'Total TTC'}
+                    </td>
+                    <td class="py-2.5 text-right font-mono-num font-extrabold text-base text-slate-900 whitespace-nowrap">
+                      ${formatCurrency(calc.totalTTC)}
+                    </td>
+                  </tr>
 
-              ${calc.depositAmount > 0 ? `
-                <div class="pt-2 border-t border-slate-200 space-y-1 text-[11px]">
-                  <div class="flex justify-between text-slate-700 font-semibold">
-                    <span>Acompte à la commande ${q.depositType === 'percent' ? `(${q.depositValue}%)` : ''}</span>
-                    <span class="font-mono-num">${formatCurrency(calc.depositAmount)}</span>
-                  </div>
-                  <div class="flex justify-between text-slate-500">
-                    <span>Reste à payer à livraison</span>
-                    <span class="font-mono-num">${formatCurrency(calc.remainingToPay)}</span>
-                  </div>
-                </div>
-              ` : ''}
+                  ${calc.depositAmount > 0 ? `
+                    <tr>
+                      <td class="pt-2.5 pb-1 pr-4 text-right text-slate-700 text-[11px] font-semibold">
+                        Acompte à la commande ${q.depositType === 'percent' ? `(${q.depositValue}%)` : ''}
+                      </td>
+                      <td class="pt-2.5 pb-1 text-right font-mono-num text-slate-900 text-[11px] font-semibold whitespace-nowrap">
+                        ${formatCurrency(calc.depositAmount)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="py-0.5 pr-4 text-right text-slate-500 text-[11px]">
+                        Reste à payer à livraison
+                      </td>
+                      <td class="py-0.5 text-right font-mono-num text-slate-700 text-[11px] whitespace-nowrap">
+                        ${formatCurrency(calc.remainingToPay)}
+                      </td>
+                    </tr>
+                  ` : ''}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
-        <!-- BOTTOM SECTION: SIGNATURE & LEGAL FOOTER -->
-        <div class="mt-auto pt-4 border-t border-slate-200">
+        <!-- BOTTOM SECTION: MINIMALIST SIGNATURE LINE & PERSISTENT LEGAL FOOTER -->
+        <div class="mt-auto pt-6">
           ${!isInvoice ? `
-            <div class="grid grid-cols-2 gap-6 mb-5">
-              <div class="text-[10px] text-slate-500">
-                <strong class="text-slate-700">Acceptation du devis :</strong><br/>
-                Ce devis est valable jusqu'au ${formatDateFR(q.validUntil)}. Pour acceptation, merci de retourner ce document daté et signé avec la mention « Bon pour accord ».
+            <div class="flex justify-between items-end gap-8 mb-6">
+              <div class="text-[10px] text-slate-500 max-w-[48%] leading-relaxed">
+                Devis valable jusqu'au <span class="font-mono-num font-semibold text-slate-700">${formatDateFR(q.validUntil)}</span>.
               </div>
-              <div class="border border-dashed border-slate-300 rounded-lg p-3 h-20 flex flex-col justify-between">
-                <span class="text-[10px] font-semibold text-slate-400">Date, signature & cachet du client (« Bon pour accord ») :</span>
+              <div class="w-[48%]">
+                <div class="h-14 border-b border-slate-800"></div>
+                <div class="text-[10px] text-slate-700 font-medium mt-1.5">
+                  Signature du client (précédée de la mention « Bon pour accord »)
+                </div>
               </div>
             </div>
           ` : ''}
 
-          <div class="text-[9px] text-slate-400 text-center leading-relaxed">
-            ${escapeHtml(profile.name)} — ${escapeHtml(profile.legalForm)} — SIRET ${escapeHtml(profile.siret)}<br/>
+          <div class="pt-3 border-t border-slate-200 text-[9px] text-slate-400 text-center leading-relaxed">
+            ${escapeHtml(profile.name)}${profile.legalForm ? ` — ${escapeHtml(profile.legalForm)}` : ''}${profile.siret ? ` — SIRET ${escapeHtml(profile.siret)}` : ''}<br/>
             ${escapeHtml(profile.legalFooter || '')}
           </div>
         </div>
