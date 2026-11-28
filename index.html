@@ -2213,7 +2213,25 @@
           height: 1123,
           windowWidth: 794,
           windowHeight: 1123,
-          logging: false
+          logging: false,
+          onclone: (clonedDoc) => {
+            // Ajustement chirurgical du padding vertical des cadres/bandeaux foncés/bleus
+            // uniquement dans le clone capturé par html2canvas (sans toucher à la structure ni aux tailles)
+            const darkBoxes = clonedDoc.querySelectorAll('.bg-slate-900, th');
+            darkBoxes.forEach((box) => {
+              const style = clonedDoc.defaultView.getComputedStyle(box);
+              const bg = style.backgroundColor;
+              // Cibler uniquement les boîtes ayant réellement un fond foncé/bleu (pas transparent)
+              if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+                const pt = parseFloat(style.paddingTop) || 0;
+                const pb = parseFloat(style.paddingBottom) || 0;
+                const shift = Math.min(3, pt);
+                box.style.paddingTop = `${Math.max(0, pt - shift)}px`;
+                box.style.paddingBottom = `${pb + shift}px`;
+                box.style.lineHeight = '1.1';
+              }
+            });
+          }
         });
 
         const imgData = canvas.toDataURL('image/png', 1.0);
